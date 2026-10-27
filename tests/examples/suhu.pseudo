@@ -1,0 +1,10 @@
+program Suhu
+kamus
+    celcius, reamur, fahrenheit, kelvin : real
+algoritma
+    input(celcius)
+    reamur = celcius * 4/5
+    fahrenheit = celcius * 9/5 + 32
+    kelvin = celcius + 273.15
+    output(reamur, fahrenheit, kelvin)
+endprogram

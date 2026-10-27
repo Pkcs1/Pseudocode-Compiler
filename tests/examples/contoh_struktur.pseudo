@@ -1,0 +1,15 @@
+program contoh_struktur
+kamus
+    type date <
+        tanggal : integer
+        bulan : string
+        tahun : integer
+    >
+    tgl : date
+algoritma
+    tgl.tanggal = 10
+    input(tgl.bulan, tgl.tahun)
+    tgl.tanggal = tgl.tanggal + 10
+    output(tgl.tanggal)
+    output(tgl.bulan, tgl.tahun)
+endprogram

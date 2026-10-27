@@ -1,0 +1,9 @@
+program bilangan
+kamus
+    bilangan : integer
+    status : boolean
+algoritma
+    input(bilangan)
+    status = bilangan >= 0
+    output(status)
+endprogram

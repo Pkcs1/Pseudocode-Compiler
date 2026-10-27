@@ -1,0 +1,17 @@
+program TabungProperti
+kamus
+    constant PI : real = 3.14
+    type tabung <
+        tinggi, jari2 : integer
+        luas, volume : real
+        luasAlas, luasDinding : real
+    >
+    t : tabung
+algoritma
+    input(t.jari2, t.tinggi)
+    t.luasAlas = PI * (t.jari2 * t.jari2)
+    t.luasDinding = t.tinggi * (2 * PI * t.jari2)
+    t.luas = 2 * t.luasAlas + t.luasDinding
+    t.volume = t.luasAlas * t.tinggi
+    output(t.luas, t.volume)
+endprogram

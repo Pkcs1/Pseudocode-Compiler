@@ -1,0 +1,9 @@
+program test
+kamus
+	n : boolean
+	constant pi : real = 100
+algoritma
+	n <- true
+	output(n)
+	output(pi)
+endprogram

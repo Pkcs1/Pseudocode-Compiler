@@ -1,0 +1,11 @@
+program Renang
+kamus
+    n, j, x, totalJarak : integer
+algoritma
+    input(n)
+    for j = 1 to n do
+        input(x)
+        totalJarak = x * 5
+        output(totalJarak)
+    endfor
+endprogram

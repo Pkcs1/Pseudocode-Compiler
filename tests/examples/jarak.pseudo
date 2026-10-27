@@ -1,0 +1,8 @@
+program Jarak
+kamus
+    posisi, posisi0, kecepatan, waktu : integer
+algoritma
+    input(posisi0, kecepatan, waktu)
+    posisi = posisi0 + (kecepatan * waktu)
+    output(posisi)
+endprogram
