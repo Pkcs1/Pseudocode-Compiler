@@ -1,0 +1,9 @@
+program Cetak_Barisan
+kamus
+    n, m, i : integer
+algoritma
+    input(n, m)
+    for i = n to m do
+        output(i)
+    endfor
+endprogram

@@ -518,5 +518,88 @@ endprogram"""
         self.assertEqual(execute_program(code).strip(), "35")
 
 
+class TestMilestone4(unittest.TestCase):
+    def test_example_3_renang(self):
+        """Uji contoh wajib #3: program Renang (3 50 60 55 -> 250, 300, 275)."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        source = (ex_dir / "renang.pseudo").read_text(encoding="utf-8")
+        inp = (ex_dir / "renang.in").read_text(encoding="utf-8")
+        expected = (ex_dir / "renang.out").read_text(encoding="utf-8").strip()
+
+        actual = execute_program(source, inp).strip()
+        self.assertEqual(actual, expected)
+
+    def test_slide_cetak_barisan(self):
+        """Uji contoh Slide Week 5&6: program Cetak_Barisan."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        source = (ex_dir / "cetak_barisan.pseudo").read_text(encoding="utf-8")
+        inp = (ex_dir / "cetak_barisan.in").read_text(encoding="utf-8")
+        expected = (ex_dir / "cetak_barisan.out").read_text(encoding="utf-8").strip()
+
+        actual = execute_program(source, inp).strip()
+        self.assertEqual(actual, expected)
+
+    def test_for_zero_iterations_and_bounds_evaluated_once(self):
+        """Uji jika init > end badan for jalan 0 kali, dan batas dievaluasi 1 kali saja."""
+        code = """
+        program UjiForKhusus
+        kamus
+            i, n, hitung : integer
+        algoritma
+            hitung <- 0
+            // init (5) > end (1), harus jalan 0 kali!
+            for i <- 5 to 1 do
+                hitung <- hitung + 100
+            endfor
+
+            // n diubah di dalam loop, tetapi batas akhir tetap 3 (dievaluasi sekali di awal)
+            n <- 3
+            for i = 1 to n do
+                hitung <- hitung + 1
+                n <- 100
+            endfor
+            output(hitung)
+        endprogram
+        """
+        self.assertEqual(execute_program(code).strip(), "3")
+
+    def test_error_missing_endfor_and_invalid_counter(self):
+        """Uji error lupa endfor (Sintaks) dan variabel counter bukan integer / belum dideklarasikan."""
+        code_no_endfor = """program TesFor
+kamus
+    i : integer
+algoritma
+    for i = 1 to 5 do
+        output(i)
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx1:
+            execute_program(code_no_endfor)
+        self.assertEqual(ctx1.exception.category, KATEGORI_SINTAKS)
+
+        code_undecl_counter = """program TesFor2
+kamus
+    n : integer
+algoritma
+    for i = 1 to 5 do
+        output(1)
+    endfor
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx2:
+            execute_program(code_undecl_counter)
+        self.assertEqual(ctx2.exception.category, KATEGORI_SEMAN)
+
+        code_real_counter = """program TesFor3
+kamus
+    i : real
+algoritma
+    for i = 1 to 5 do
+        output(i)
+    endfor
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx3:
+            execute_program(code_real_counter)
+        self.assertEqual(ctx3.exception.category, KATEGORI_SEMAN)
+
+
 if __name__ == "__main__":
     unittest.main()

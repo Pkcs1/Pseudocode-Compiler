@@ -76,5 +76,13 @@ Dokumen ini mencatat semua keputusan semantik dan aturan perilaku yang diterapka
     - Di slide perkuliahan (misalnya Slide Week 2 halaman 8 pada bagian *Memory/Program*), pengisian nilai terkadang ditulis dengan tanda panah `<-` (`posisi <- posisi0 + kecepatan*waktu`), sedangkan di slide lain ditulis dengan `=`.
     - Lexer mengenali baik `<-` maupun `=` sebagai token `ASSIGN`, sehingga keduanya dapat digunakan untuk pengisian nilai variabel/field struct, deklarasi `constant`, maupun inisialisasi `for`.
 
+## Milestone 4: Perulangan `for i = init to end do ... endfor`
+
+19. **Evaluasi Batas `init` dan `end` pada `for`:**
+    - Ekspresi `init` dan `end` dievaluasi **satu kali saja** sebelum perulangan dimulai. Jika variabel yang menjadi pembatas (`end`) diubah di dalam badan `for`, jumlah iterasi tidak ikut berubah.
+    - Jika `init > end` (misalnya `for i = 1 to 0 do`), badan perulangan dijalankan `0` kali, namun variabel `i` tetap telah terinisialisasi dengan nilai `init` (seperti `for i = n; i <= m; i++` di bahasa Go pada Slide Week 5&6 halaman 9).
+    - Variabel pencacah `i` wajib dideklarasikan di `kamus` dengan tipe `integer` (atau alias yang mengarah ke `integer`).
+
+
 
 
