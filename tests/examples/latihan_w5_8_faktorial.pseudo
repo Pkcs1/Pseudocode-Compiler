@@ -1,0 +1,11 @@
+program Faktorial
+kamus
+    n, i, hasil : integer
+algoritma
+    input(n)
+    hasil = 1
+    for i = 1 to n do
+        hasil = hasil * i
+    endfor
+    output(hasil)
+endprogram

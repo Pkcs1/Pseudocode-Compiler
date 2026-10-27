@@ -1,0 +1,12 @@
+program GajiKaryawan
+kamus
+    type karyawan <
+        nama : string
+        gaji_pokok, tunjangan, potongan, total_gaji : real
+    >
+    k : karyawan
+algoritma
+    input(k.nama, k.gaji_pokok, k.tunjangan, k.potongan)
+    k.total_gaji = k.gaji_pokok + k.tunjangan - k.potongan
+    output(k.total_gaji)
+endprogram

@@ -1,0 +1,11 @@
+program PerkalianIndeks
+kamus
+    n, i, x, hasil : integer
+algoritma
+    input(n)
+    for i = 1 to n do
+        input(x)
+        hasil = x * i
+        output(hasil)
+    endfor
+endprogram

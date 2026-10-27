@@ -1,0 +1,14 @@
+program Olahraga
+kamus
+    n, orang, hari, langkah, total_langkah : integer
+algoritma
+    input(n)
+    for orang = 1 to n do
+        total_langkah = 0
+        for hari = 1 to 7 do
+            input(langkah)
+            total_langkah = total_langkah + langkah
+        endfor
+        output(total_langkah)
+    endfor
+endprogram

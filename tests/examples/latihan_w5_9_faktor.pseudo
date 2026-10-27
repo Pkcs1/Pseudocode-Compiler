@@ -1,0 +1,11 @@
+program FaktorBilangan
+kamus
+    n, d : integer
+    apakah_faktor : boolean
+algoritma
+    input(n)
+    for d = 1 to n do
+        apakah_faktor = (n mod d) == 0
+        output(d, apakah_faktor)
+    endfor
+endprogram

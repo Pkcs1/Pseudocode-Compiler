@@ -1,0 +1,14 @@
+program Koding
+kamus
+    n, i, jam, total_jam : integer
+    rata_rata : real
+algoritma
+    input(n)
+    total_jam = 0
+    for i = 1 to n do
+        input(jam)
+        total_jam = total_jam + jam
+    endfor
+    rata_rata = total_jam / n
+    output(rata_rata)
+endprogram

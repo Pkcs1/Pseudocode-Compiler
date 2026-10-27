@@ -1,0 +1,20 @@
+program InvestasiSaham
+kamus
+    constant PERSEN_BIAYA : real = 0.002
+    constant PERSEN_PAJAK : real = 0.1
+    type saham <
+        harga_beli, harga_jual, jumlah : real
+        total_awal, total_jual, untung_kotor : real
+        biaya_transaksi, pajak, untung_bersih : real
+    >
+    s : saham
+algoritma
+    input(s.harga_beli, s.harga_jual, s.jumlah)
+    s.total_awal = s.harga_beli * s.jumlah
+    s.total_jual = s.harga_jual * s.jumlah
+    s.untung_kotor = s.total_jual - s.total_awal
+    s.biaya_transaksi = s.total_jual * PERSEN_BIAYA
+    s.pajak = s.untung_kotor * PERSEN_PAJAK
+    s.untung_bersih = s.untung_kotor - s.biaya_transaksi - s.pajak
+    output(s.untung_bersih)
+endprogram

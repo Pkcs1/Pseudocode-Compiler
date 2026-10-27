@@ -601,5 +601,242 @@ endprogram"""
         self.assertEqual(ctx3.exception.category, KATEGORI_SEMAN)
 
 
+class TestMilestone5(unittest.TestCase):
+    def run_example_file(self, filename: str, input_text: str) -> str:
+        ex_path = ROOT_DIR / "tests" / "examples" / filename
+        source = ex_path.read_text(encoding="utf-8")
+        return execute_program(source, input_text).strip()
+
+    def test_latihan_week2(self):
+        """Uji seluruh Latihan Soal dari Slide Minggu 2 (No. 1 s.d. 5)."""
+        # 1. Persegi Panjang
+        self.assertEqual(self.run_example_file("latihan_w2_1_persegi_panjang.pseudo", "2 2"), "8 4")
+        self.assertEqual(self.run_example_file("latihan_w2_1_persegi_panjang.pseudo", "70 20"), "180 1400")
+        self.assertEqual(self.run_example_file("latihan_w2_1_persegi_panjang.pseudo", "5 46"), "102 230")
+
+        # 2. Lingkaran
+        self.assertEqual(
+            self.run_example_file("latihan_w2_2_lingkaran.pseudo", "5").splitlines(),
+            ["78.5", "31.400000000000002"],
+        )
+        self.assertEqual(
+            self.run_example_file("latihan_w2_2_lingkaran.pseudo", "10").splitlines(),
+            ["314", "62.800000000000004"],
+        )
+
+        # 3. Fungsi F(x, y)
+        self.assertAlmostEqual(
+            float(self.run_example_file("latihan_w2_3_fungsi.pseudo", "2 2")),
+            27.045454545454547,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            float(self.run_example_file("latihan_w2_3_fungsi.pseudo", "70 20")),
+            207.00006798096533,
+            places=12,
+        )
+        self.assertAlmostEqual(
+            float(self.run_example_file("latihan_w2_3_fungsi.pseudo", "5 46")),
+            467.01176470588234,
+            places=12,
+        )
+
+        # 4. Digit
+        self.assertEqual(self.run_example_file("latihan_w2_4_digit.pseudo", "444"), "4 4 4")
+        self.assertEqual(self.run_example_file("latihan_w2_4_digit.pseudo", "1"), "0 0 1")
+        self.assertEqual(self.run_example_file("latihan_w2_4_digit.pseudo", "546"), "5 4 6")
+
+        # 5. Toko (Keuntungan 5%)
+        self.assertEqual(self.run_example_file("latihan_w2_5_toko.pseudo", "1000 2000 3000"), "1050 2100 3150")
+        self.assertEqual(self.run_example_file("latihan_w2_5_toko.pseudo", "123 456 135"), "129.15 478.8 141.75")
+        self.assertEqual(self.run_example_file("latihan_w2_5_toko.pseudo", "5 7 2"), "5.25 7.35 2.1")
+
+    def test_latihan_week3(self):
+        """Uji seluruh Latihan Soal dari Slide Minggu 3 (No. 1 s.d. 4)."""
+        # 1. Ganjil
+        self.assertEqual(self.run_example_file("latihan_w3_1_ganjil.pseudo", "7"), "true")
+        self.assertEqual(self.run_example_file("latihan_w3_1_ganjil.pseudo", "10"), "false")
+
+        # 2. Cumlaude
+        self.assertEqual(self.run_example_file("latihan_w3_2_cumlaude.pseudo", "7 520"), "true")
+        self.assertEqual(self.run_example_file("latihan_w3_2_cumlaude.pseudo", "10 573"), "false")
+
+        # 3. Digit Terurut (Mengecil)
+        self.assertEqual(self.run_example_file("latihan_w3_3_digit_terurut.pseudo", "530"), "true")
+        self.assertEqual(self.run_example_file("latihan_w3_3_digit_terurut.pseudo", "555"), "false")
+
+        # 4. Terurut 2 (Membesar atau Mengecil)
+        self.assertEqual(self.run_example_file("latihan_w3_4_terurut2.pseudo", "149"), "true")
+        self.assertEqual(self.run_example_file("latihan_w3_4_terurut2.pseudo", "555"), "false")
+        self.assertEqual(self.run_example_file("latihan_w3_4_terurut2.pseudo", "961"), "true")
+        self.assertEqual(self.run_example_file("latihan_w3_4_terurut2.pseudo", "183"), "false")
+
+    def test_latihan_week4(self):
+        """Uji seluruh Latihan Soal dari Slide Minggu 4 (No. 1 s.d. 5)."""
+        # 1. Transaksi
+        self.assertEqual(self.run_example_file("latihan_w4_1_transaksi.pseudo", "Pensil 20 2000"), "40000")
+
+        # 2. Persegi Panjang (Struct)
+        self.assertEqual(self.run_example_file("latihan_w4_2_persegi_panjang.pseudo", "10.0 5.0"), "50 30")
+
+        # 3. BMI
+        bmi_out = float(self.run_example_file("latihan_w4_3_bmi.pseudo", "Andi 70.0 1.75"))
+        self.assertAlmostEqual(bmi_out, 22.86, delta=0.01)
+
+        # 4. Gaji Karyawan
+        self.assertEqual(
+            self.run_example_file("latihan_w4_4_gaji.pseudo", "Budi 5000000 1000000 500000"),
+            "5500000",
+        )
+
+        # 5. Investasi Saham
+        self.assertEqual(
+            self.run_example_file("latihan_w4_5_saham.pseudo", "10000 12000 100"),
+            "177600",
+        )
+
+    def test_latihan_week5_and_6(self):
+        """Uji seluruh Latihan Soal dari Slide Minggu 5 & 6 (No. 1 s.d. 9)."""
+        # 1. Cetak Teks
+        self.assertEqual(
+            self.run_example_file("latihan_w5_1_cetak_teks.pseudo", "3\nHEI").splitlines(),
+            ["HEI", "HEI", "HEI"],
+        )
+        self.assertEqual(self.run_example_file("latihan_w5_1_cetak_teks.pseudo", "0\nhaha"), "")
+
+        # 2. Kue
+        self.assertEqual(
+            self.run_example_file("latihan_w5_2_kue.pseudo", "2\n100\n150").splitlines(),
+            ["1000", "1500"],
+        )
+
+        # 3. Perkalian Indeks
+        self.assertEqual(
+            self.run_example_file("latihan_w5_3_perkalian.pseudo", "5\n3 7 1 4 2").splitlines(),
+            ["3", "14", "3", "16", "10"],
+        )
+
+        # 4. Olahraga (7 hari)
+        inp_olahraga = "2\n1000 1500 2000 1200 1300 1700 1800\n900 1100 1300 1400 1500 1600 1700"
+        self.assertEqual(
+            self.run_example_file("latihan_w5_4_olahraga.pseudo", inp_olahraga).splitlines(),
+            ["10500", "9500"],
+        )
+
+        # 5. Sandi
+        self.assertEqual(self.run_example_file("latihan_w5_5_sandi.pseudo", "3\n2022 4321 5578"), "22")
+        self.assertEqual(self.run_example_file("latihan_w5_5_sandi.pseudo", "3\n1111 2222 3333"), "12")
+
+        # 6. Bidang Persegi
+        self.assertEqual(
+            self.run_example_file("latihan_w5_6_persegi.pseudo", "3\n5\n4\n7").splitlines(),
+            ["25 20", "16 16", "49 28"],
+        )
+
+        # 7. Koding (Rata-rata)
+        koding_out = float(self.run_example_file("latihan_w5_7_koding.pseudo", "7\n8 5 6 5 4 5 6"))
+        self.assertAlmostEqual(koding_out, 5.571, delta=0.01)
+
+        # 8. Faktorial
+        self.assertEqual(self.run_example_file("latihan_w5_8_faktorial.pseudo", "5"), "120")
+        self.assertEqual(self.run_example_file("latihan_w5_8_faktorial.pseudo", "1"), "1")
+        self.assertEqual(self.run_example_file("latihan_w5_8_faktorial.pseudo", "10"), "3628800")
+
+        # 9. Faktor Bilangan
+        self.assertEqual(
+            self.run_example_file("latihan_w5_9_faktor.pseudo", "5").splitlines(),
+            ["1 true", "2 false", "3 false", "4 false", "5 true"],
+        )
+
+    def test_flexible_use_cases_outside_slides(self):
+        """
+        Uji fleksibilitas bahasa di luar soal-soal slide:
+        1. 'x<-5' tanpa spasi di dalam ekspresi tetap terbaca sebagai 'x < -5'.
+        2. Program tanpa variabel di kamus (kamus kosong).
+        3. Struct yang memiliki beberapa field bertipe struct lain (nested geometri) & salinan independen.
+        4. Perulangan for bersarang (nested for) dengan variabel pencacah bertipe alias,
+           menghitung mundur secara tidak langsung, dan operasi sandi geser karakter (Caesar Cipher).
+        """
+        # 1. Disambiguasi '<-' sebagai assignment vs '< -' sebagai perbandingan negatif tanpa spasi
+        code_arrow_cmp = """
+        program UjiFleksibelPanah
+        kamus
+            x : integer
+            status1, status2 : boolean
+        algoritma
+            x <- -10
+            status1 <- x<-5
+            status2 <- x<-15 + 2
+            output(status1, status2)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_arrow_cmp).strip(), "true false")
+
+        # 2. Kamus kosong (langsung mencetak perhitungan literal & string)
+        code_empty_kamus = """
+        program KamusKosong
+        kamus
+        algoritma
+            output("Halo" + " " + "Alpro", len("Telkom"), 2 ^ 10)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_empty_kamus).strip(), "Halo Alpro 6 1024")
+
+        # 3. Komposisi struct geometri (struct garis berisi 2 struct titik) + jarak kuadrat
+        code_geometry = """
+        program GeometriGaris
+        kamus
+            type koordinat : integer
+            type titik <
+                x, y : koordinat
+            >
+            type garis <
+                awal, akhir : titik
+            >
+            g1, g2 : garis
+            dx, dy, jarak_kuadrat : koordinat
+        algoritma
+            g1.awal.x <- 1
+            g1.awal.y <- 2
+            g1.akhir.x <- 4
+            g1.akhir.y <- 6
+
+            // Salin seluruh garis g1 ke g2, lalu geser titik akhir g2
+            g2 <- g1
+            g2.akhir.x <- 10
+
+            dx <- g1.akhir.x - g1.awal.x
+            dy <- g1.akhir.y - g1.awal.y
+            jarak_kuadrat <- (dx ^ 2) + (dy ^ 2)
+            output(jarak_kuadrat, g1.akhir.x, g2.akhir.x)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_geometry).strip(), "25 4 10")
+
+        # 4. Nested for loop + Caesar Cipher karakter + akumulasi matriks
+        code_nested_and_cipher = """
+        program UjiNestedDanCipher
+        kamus
+            type indeks : integer
+            baris, kolom, total_sel, geser : indeks
+            huruf_awal, huruf_sandi : char
+        algoritma
+            total_sel <- 0
+            for baris <- 1 to 3 do
+                for kolom <- 1 to 4 do
+                    total_sel <- total_sel + (baris * kolom)
+                endfor
+            endfor
+
+            // Geser karakter 'Y' sejauh 3 huruf secara melingkar (Y -> Z -> A -> B)
+            huruf_awal <- 'Y'
+            geser <- 3
+            huruf_sandi <- ((huruf_awal - 'A' + geser) mod 26) + 'A'
+            output(total_sel, huruf_sandi)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_nested_and_cipher).strip(), "60 B")
+
+
 if __name__ == "__main__":
     unittest.main()

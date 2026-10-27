@@ -1,0 +1,10 @@
+program CetakTeks
+kamus
+    n, i : integer
+    teks : string
+algoritma
+    input(n, teks)
+    for i = 1 to n do
+        output(teks)
+    endfor
+endprogram

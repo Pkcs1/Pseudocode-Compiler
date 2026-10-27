@@ -83,6 +83,20 @@ Dokumen ini mencatat semua keputusan semantik dan aturan perilaku yang diterapka
     - Jika `init > end` (misalnya `for i = 1 to 0 do`), badan perulangan dijalankan `0` kali, namun variabel `i` tetap telah terinisialisasi dengan nilai `init` (seperti `for i = n; i <= m; i++` di bahasa Go pada Slide Week 5&6 halaman 9).
     - Variabel pencacah `i` wajib dideklarasikan di `kamus` dengan tipe `integer` (atau alias yang mengarah ke `integer`).
 
+## Milestone 5: Fleksibilitas Ekspresi & Solusi Latihan Soal Slide
+
+20. **Disambiguasi `x<-5` di Dalam Ekspresi (`x < -5` vs `x <- 5`):**
+    - Karena `<-` didukung sebagai operator pengisian nilai (statement), bagaimana jika pemrogram menulis `status = x<-5` (tanpa spasi) di dalam ekspresi dengan maksud membandingkan apakah `x` lebih kecil dari `-5`?
+    - Di `parser.py` (`parse_compare_expr`), jika token `ASSIGN('<-')` muncul di posisi operator perbandingan di dalam ekspresi, Parser secara cerdas memecahnya menjadi operator perbandingan `<` diikuti operator unary `-` (`x < -5`). Dengan demikian, baik `x <- 5` (assignment) maupun `status <- x<-5` (`status <- (x < -5)`) sama-sama berjalan mulus!
+
+21. **Rekonstruksi Rumus Latihan Soal #3 Minggu 2 (`Fungsi F(x,y)`):**
+    - Pada Slide Week 2 halaman 22, gambar rumus persamaan matematika hilang saat konversi dari PowerPoint, namun tiga contoh masukan dan keluaran masih utuh (`2 2 -> 27.045454545454547`, `70 20 -> 207.00006798096533`, `5 46 -> 467.01176470588234`).
+    - Dari ketiga pasangan angka tersebut, rumus aslinya direkonstruksi secara eksak hingga 16 angka di belakang koma: `f(x, y) = 1 / (3 * (x ^ 2) + 10) + 10 * y + 7`.
+
+22. **Catatan Latihan Soal #5 Minggu 4 (`Investasi Saham`):**
+    - Rumus pajak keuntungan adalah `10%` dari keuntungan kotor (`s.untung_kotor * 0.1`). Pada kasus uji pertama (untung positif), rumus linier menghasilkan `177600` sesuai slide. Kasus uji kedua di slide (saat rugi pajak menjadi `0`) membutuhkan percabangan `if/else` yang baru diajarkan di minggu kuliah berikutnya.
+
+
 
 
 

@@ -1,0 +1,14 @@
+program Sandi
+kamus
+    n, i, x, d_awal, d_akhir, total : integer
+algoritma
+    input(n)
+    total = 0
+    for i = 1 to n do
+        input(x)
+        d_awal = x div 1000
+        d_akhir = x mod 10
+        total = total + d_awal + d_akhir
+    endfor
+    output(total)
+endprogram

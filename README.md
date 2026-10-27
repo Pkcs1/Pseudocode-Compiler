@@ -1,99 +1,59 @@
-# Pseudocode Alpro 1 Interpreter
+# Interpreter Pseudocode Alpro 1 (Telkom University)
 
-Interpreter untuk bahasa **Pseudocode Algoritma dan Pemrograman 1 (Alpro 1)** yang dibangun menggunakan Python murni (*standard library* saja, tanpa dependensi eksternal).
+Interpreter baris perintah (*command-line*) berbasis **Python 3** (hanya menggunakan *standard library* bawaan Python) untuk menjalankan kode pseudocode mata kuliah **Algoritma dan Pemrograman 1** di Universitas Telkom secara langsung tanpa perlu menerjemahkannya ke bahasa lain.
 
-Proyek ini dirancang agar mahasiswa dapat langsung menulis dan menjalankan kode pseudocode sesuai notasi perkuliahan, lengkap dengan **pemeriksaan tipe data & kamus sebelum program jalan (*static type checking*)** serta **pesan kesalahan dalam Bahasa Indonesia** yang mudah dipahami.
-
----
-
-## Fitur & Status Pengembangan
-
-- [x] **Milestone 1 — Struktur Dasar, Variabel, Input/Output, dan Aritmatika Angka:**
-  - Struktur `program ... kamus ... algoritma ... endprogram`
-  - Tipe data `integer` (64-bit signed, setara `int64` di Go) dan `real` (`float64`)
-  - Deklarasi variabel multi-nama (`a, b, c : integer`)
-  - Instruksi `input(...)` (membaca token terpisah spasi/baris baru seperti `fmt.Scan` di Go) dan `output(...)`
-  - Operasi aritmatika `+`, `-`, `*`, `/`, `div`, `mod`, dan pangkat `^`
-- [x] **Milestone 2 — Tipe `string`, `boolean`, `char`, serta Seluruh Operator (Level 1–9):**
-  - Tipe data `string`, `boolean`, dan `char` (representasi kode ASCII/Unicode)
-  - Fungsi bawaan `len(s)` untuk menghitung panjang `string`
-  - Operator perbandingan (`==`, `!=`, `<>`, `<`, `<=`, `>`, `>=`)
-  - Operator logika (`not`, `and`, `or`) dengan evaluasi *short-circuit*
-  - Operator bitwise (`<<`, `>>`, `&`, `|`) dengan prioritas setara bahasa Go
-- [x] **Milestone 3 — Konstanta (`constant`), Tipe Alias, dan Tipe Bentukan Struct:**
-  - Deklarasi konstanta (`constant PI : real = 3.14`)
-  - Deklarasi tipe alias (`type bilangan : integer`)
-  - Deklarasi tipe bentukan struct (`type date < tanggal : integer ... >`) dengan urutan deklarasi bebas di dalam `kamus`
-  - Akses field menggunakan titik (`tgl.tanggal`, termasuk struct bersarang) dan penyalinan nilai struct (*copy semantics*)
-  - Dukungan operator pengisian nilai baik menggunakan `=` maupun panah `<-`
-- [x] **Milestone 4 — Perulangan `for ... to ... do ... endfor`:**
-  - Perulangan pencacah naik `for i = init to end do ... endfor` (batas dievaluasi satu kali di awal, mendukung perulangan bersarang)
-- [ ] **Selanjutnya (In Progress):**
-  - Perulangan `while ... do ... endwhile` dan `repeat ... until`
-  - Percabangan (`if ... then ... else ... endif`, `depend on`)
-  - Array & Subprogram (`function`, `procedure`)
-
-Catatan keputusan semantik selengkapnya dapat dilihat di [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Proyek ini ditulis dengan gaya kode yang sederhana, mudah dibaca oleh pemula, dan dilengkapi komentar penjelasan dalam bahasa Indonesia.
 
 ---
 
-## Persyaratan Sistem
+## Cara Pakai
 
-- **Python 3.10+** (tidak memerlukan `pip install` paket tambahan apa pun).
-
----
-
-## Cara Penggunaan
-
-### 1. Menjalankan File Pseudocode
+Jalankan file `.pseudo` langsung dari terminal:
 
 ```bash
-python pseudo.py <path_ke_file.pseudo>
+python pseudo.py tests/examples/jarak.pseudo
 ```
 
-Contoh menjalankan program yang tersedia di folder `tests/examples/`:
+Lalu ketik masukan (input) yang diminta program (misalnya `3 4 5`) dan tekan **Enter**, atau arahkan input dari file `.in`:
 
 ```bash
-python pseudo.py tests/examples/tabung_properti.pseudo
+python pseudo.py tests/examples/jarak.pseudo < tests/examples/jarak.in
 ```
 
-Masukkan input jari-jari dan tinggi (misalnya `7 10` lalu tekan Enter), maka program akan mencetak luas dinding, luas permukaan, dan volume tabung:
+---
 
-```text
-439.6 747.32 1538.6
-```
+## Arsitektur Proyek (1 File per Tahapan)
 
-### 2. Daftar Contoh Program (`tests/examples/`)
+Setiap kali kamu menjalankan `python pseudo.py program.pseudo`, kode pseudocode kamu diproses melalui tahapan berikut secara berurutan:
 
-| File | Fitur yang Dicontohkan |
-| :--- | :--- |
-| `jarak.pseudo` | Variabel `integer`, operasi aritmatika dasar, `input` & `output` |
-| `suhu.pseudo` | Tipe `real`, deklarasi `constant`, konversi implisit `integer` ke `real` |
-| `bilangan.pseudo` | Tipe `boolean`, operator `div`, `mod`, perbandingan, dan logika `and` |
-| `rahasia.pseudo` | Tipe `char` (kode ASCII) dan operasi bitwise (`>>`, `<<`, `&`, `\|`) |
-| `contoh_struktur.pseudo` | Tipe alias (`type bilangan : integer`) dan struct (`type date < ... >`) |
-| `tabung_properti.pseudo` | Perhitungan geometri menggunakan `constant` dan field struct (`t.volume`) |
-| `cetak_barisan.pseudo` | Perulangan `for j = 1 to n do ... endfor` |
-| `renang.pseudo` | Akumulasi nilai di dalam perulangan `for` |
+1. **`lexer.py` (Tahap 1 — Lexer / Tokenizer)**
+   Membaca teks kode sumber huruf demi huruf, menormalisasi *smart quotes* dari PowerPoint, mengabaikan komentar `//`, dan mengubah teks menjadi daftar `Token`.
+2. **`ast_nodes.py` (Definisi Pohon AST)**
+   Kumpulan `@dataclass` sederhana sebagai wadah penyimpan struktur program di memori (`Program`, `VarDecl`, `ConstDecl`, `AliasDecl`, `StructDecl`, `AssignStmt`, `InputStmt`, `OutputStmt`, `ForStmt`, dll).
+3. **`parser.py` (Tahap 2 — Recursive-Descent Parser)**
+   Memeriksa urutan `Token` sesuai tata bahasa (EBNF) dan menyusun pohon AST beserta 9 level prioritas operator.
+4. **`checker.py` (Tahap 3 — Semantic Checker)**
+   Berjalan **sebelum** program dieksekusi untuk memeriksa kamus & tipe data: memastikan semua variabel sudah dideklarasikan, melarang perubahan nilai konstanta, dan mencegah ketidakcocokan tipe (seperti mengisi variabel `integer` dengan nilai `real`).
+5. **`interpreter.py` (Tahap 4 — Interpreter)**
+   Menjalankan pohon AST baris demi baris, membaca input dari `stdin` (ala `fmt.Scan` di Go), menghitung ekspresi matematika/logika/bitwise, dan mencetak hasil ke `stdout`.
+6. **`errors.py` (Penanganan Pesan Error Bahasa Indonesia)**
+   Menampilkan pesan kesalahan yang ramah dengan nomor baris, kategori kesalahan (`kesalahan sintaks`, `kesalahan tipe/deklarasi`, atau `kesalahan saat program berjalan`), dan penunjuk `^` tepat di bawah letak kesalahan—tanpa pernah menampilkan *Python traceback*.
 
-### 3. Contoh Kode Pseudocode (Struct & Perulangan `for`)
+---
 
-```text
-program jadwal_renang
-kamus
-    n, i, waktu, total : integer
-algoritma
-    input(n)
-    total = 0
-    for i = 1 to n do
-        input(waktu)
-        total = total + waktu
-    endfor
-    output(total)
-endprogram
-```
+## Cara Menambahkan Fitur Baru di Minggu Kuliah Berikutnya
 
-### 4. Menjalankan Seluruh Pengujian (*Unit Tests*)
+Saat materi perkuliahan bertambah (misalnya `if/else`, `while`, `array`, fungsi, atau prosedur), kamu cukup melakukan 4 langkah terisolasi:
+1. Tambahkan class node baru di `ast_nodes.py`.
+2. Tambahkan metode `parse_<fitur>()` di `parser.py`.
+3. Tambahkan metode `check_<fitur>()` di `checker.py`.
+4. Tambahkan metode `exec_<fitur>()` di `interpreter.py`.
+
+---
+
+## Menjalankan Pengujian Otomatis (Unit Tests)
+
+Untuk menjalankan seluruh unit test (mencakup contoh wajib, skenario error, latihan soal slide Minggu 2–6, dan kasus uji fleksibilitas):
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -101,22 +61,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ---
 
-## Arsitektur Proyek
+## Dokumentasi Tambahan
 
-Interpreter ini dibagi menjadi 4 tahapan berurutan yang bersih dan terpisah:
-
-```text
-File .pseudo ──► [1. Lexer] ──► [2. Parser] ──► [3. Checker] ──► [4. Interpreter]
-```
-
-| File | Peran |
-| :--- | :--- |
-| `pseudo.py` | Pintu masuk utama (*Command-Line Interface* / CLI) yang menghubungkan keempat tahap. |
-| `lexer.py` | **Tahap 1 (Lexer):** Memecah teks kode sumber menjadi deretan token berbaris & berkolom. |
-| `ast_nodes.py` | Definisi struktur data pohon sintaks abstrak (*Abstract Syntax Tree* / AST). |
-| `parser.py` | **Tahap 2 (Parser):** Mengubah deretan token menjadi pohon AST sesuai tata bahasa pseudocode. |
-| `checker.py` | **Tahap 3 (Semantic & Type Checker):** Memeriksa kelengkapan deklarasi di `kamus` dan kecocokan tipe data **sebelum** program dieksekusi. |
-| `interpreter.py` | **Tahap 4 (Interpreter):** Mengeksekusi pohon AST baris demi baris dan menangani I/O. |
-| `errors.py` | Pemformat pesan kesalahan sintaks, tipe/kamus, dan *runtime* dalam Bahasa Indonesia. |
-| `docs/DECISIONS.md` | Dokumentasi keputusan desain dan aturan semantik bahasa. |
-| `tests/` | Kumpulan *unit test* (`test_all.py`) dan contoh program (`.pseudo`, `.in`, `.out`). |
+- [`docs/SPEC.md`](docs/SPEC.md): Spesifikasi lengkap sintaks, tipe data, operator, dan EBNF bahasa pseudocode.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): Catatan keputusan desain dan penyelesaian bagian yang ambigu di slide kuliah.

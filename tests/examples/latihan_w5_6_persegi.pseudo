@@ -1,0 +1,12 @@
+program BidangPersegi
+kamus
+    n, i, sisi, luas, keliling : integer
+algoritma
+    input(n)
+    for i = 1 to n do
+        input(sisi)
+        luas = sisi * sisi
+        keliling = 4 * sisi
+        output(luas, keliling)
+    endfor
+endprogram

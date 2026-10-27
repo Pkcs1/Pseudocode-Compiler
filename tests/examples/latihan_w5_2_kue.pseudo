@@ -1,0 +1,11 @@
+program Kue
+kamus
+    n, i, x, total_tepung : integer
+algoritma
+    input(n)
+    for i = 1 to n do
+        input(x)
+        total_tepung = x * 10
+        output(total_tepung)
+    endfor
+endprogram
