@@ -1,0 +1,9 @@
+program PersegiPanjang
+kamus
+    p, l, K, L : integer
+algoritma
+    input(p, l)
+    K = 2 * p + 2 * l
+    L = p * l
+    output(K, L)
+endprogram

@@ -1,0 +1,13 @@
+program TransaksiBarang
+kamus
+    type transaksi <
+        nama : string
+        jumlah : integer
+        harga_satuan, total_harga : real
+    >
+    t : transaksi
+algoritma
+    input(t.nama, t.jumlah, t.harga_satuan)
+    t.total_harga = t.jumlah * t.harga_satuan
+    output(t.total_harga)
+endprogram

@@ -1,0 +1,10 @@
+program FungsiFxy
+kamus
+    x, y : integer
+    hasil : real
+algoritma
+    input(x, y)
+    // Rumus f(x, y) = 1 / (3 * x^2 + 10) + 10 * y + 7
+    hasil = 1 / (3 * (x ^ 2) + 10) + 10 * y + 7
+    output(hasil)
+endprogram

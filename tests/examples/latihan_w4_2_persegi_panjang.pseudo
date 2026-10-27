@@ -1,0 +1,13 @@
+program PersegiPanjangStruct
+kamus
+    type persegi_panjang <
+        panjang, lebar : real
+        luas, keliling : real
+    >
+    pp : persegi_panjang
+algoritma
+    input(pp.panjang, pp.lebar)
+    pp.luas = pp.panjang * pp.lebar
+    pp.keliling = 2 * (pp.panjang + pp.lebar)
+    output(pp.luas, pp.keliling)
+endprogram

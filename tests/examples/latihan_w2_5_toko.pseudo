@@ -1,0 +1,11 @@
+program Toko
+kamus
+    b1, b2, b3 : integer
+    j1, j2, j3 : real
+algoritma
+    input(b1, b2, b3)
+    j1 = b1 + (b1 * 5 / 100)
+    j2 = b2 + (b2 * 5 / 100)
+    j3 = b3 + (b3 * 5 / 100)
+    output(j1, j2, j3)
+endprogram

@@ -1,0 +1,12 @@
+program HitungBMI
+kamus
+    type data_bmi <
+        nama : string
+        berat, tinggi, bmi : real
+    >
+    orang : data_bmi
+algoritma
+    input(orang.nama, orang.berat, orang.tinggi)
+    orang.bmi = orang.berat / (orang.tinggi ^ 2)
+    output(orang.bmi)
+endprogram

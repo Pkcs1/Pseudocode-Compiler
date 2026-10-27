@@ -1,0 +1,9 @@
+program Cumlaude
+kamus
+    semester, eprt : integer
+    lulus_cumlaude : boolean
+algoritma
+    input(semester, eprt)
+    lulus_cumlaude = (semester <= 8) and (eprt >= 500)
+    output(lulus_cumlaude)
+endprogram

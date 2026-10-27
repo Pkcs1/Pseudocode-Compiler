@@ -1,0 +1,9 @@
+program Ganjil
+kamus
+    x : integer
+    status : boolean
+algoritma
+    input(x)
+    status = (x mod 2) != 0
+    output(status)
+endprogram

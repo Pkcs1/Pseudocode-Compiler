@@ -1,0 +1,12 @@
+program DigitTerurut
+kamus
+    x, d1, d2, d3 : integer
+    terurut_mengecil : boolean
+algoritma
+    input(x)
+    d1 = x div 100
+    d2 = (x div 10) mod 10
+    d3 = x mod 10
+    terurut_mengecil = (d1 > d2) and (d2 > d3)
+    output(terurut_mengecil)
+endprogram

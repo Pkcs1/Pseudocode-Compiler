@@ -496,6 +496,50 @@ class Parser:
                 line=op_tok.line,
                 col=op_tok.col,
             )
+        # Kasus khusus: jika pemrogram menulis 'x<-5' tanpa spasi di dalam ekspresi
+        # dengan maksud 'x < -5', pecah token '<-' menjadi perbandingan '<' dan unary '-'!
+        if self.current().type == "ASSIGN" and str(self.current().value) == "<-":
+            op_tok = self.advance()
+            neg_first = UnaryExpr(
+                op="-",
+                operand=self.parse_unary_expr(),
+                line=op_tok.line,
+                col=op_tok.col + 1,
+            )
+            # Lanjutkan sisa perkalian/penjumlahan di sebelah kanan jika ada (misal x<-5 * 2 + 1)
+            right = self._continue_mul_and_add(neg_first)
+            return BinaryExpr(
+                left=left,
+                op="<",
+                right=right,
+                line=op_tok.line,
+                col=op_tok.col,
+            )
+        return left
+
+    def _continue_mul_and_add(self, first_unary: Expr) -> Expr:
+        """Melanjutkan parsing level 4 dan level 5 setelah unary pertama pada kasus 'x<-5'."""
+        left = first_unary
+        while self.current().type in ("STAR", "SLASH", "MOD", "DIV", "SHL", "SHR", "AMP"):
+            op_tok = self.advance()
+            right = self.parse_unary_expr()
+            left = BinaryExpr(
+                left=left,
+                op=str(op_tok.value),
+                right=right,
+                line=op_tok.line,
+                col=op_tok.col,
+            )
+        while self.current().type in ("PLUS", "MINUS", "PIPE"):
+            op_tok = self.advance()
+            right = self.parse_mul_expr()
+            left = BinaryExpr(
+                left=left,
+                op=str(op_tok.value),
+                right=right,
+                line=op_tok.line,
+                col=op_tok.col,
+            )
         return left
 
     def parse_add_expr(self) -> Expr:
