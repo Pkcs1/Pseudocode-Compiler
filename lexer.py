@@ -45,6 +45,7 @@ KEYWORDS = {
     "type": "TYPE",
     "for": "FOR",
     "to": "TO",
+    "step": "STEP",
     "do": "DO",
     "endfor": "ENDFOR",
 }

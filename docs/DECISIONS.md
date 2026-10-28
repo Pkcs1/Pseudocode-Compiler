@@ -76,12 +76,14 @@ Dokumen ini mencatat semua keputusan semantik dan aturan perilaku yang diterapka
     - Di slide perkuliahan (misalnya Slide Week 2 halaman 8 pada bagian *Memory/Program*), pengisian nilai terkadang ditulis dengan tanda panah `<-` (`posisi <- posisi0 + kecepatan*waktu`), sedangkan di slide lain ditulis dengan `=`.
     - Lexer mengenali baik `<-` maupun `=` sebagai token `ASSIGN`, sehingga keduanya dapat digunakan untuk pengisian nilai variabel/field struct, deklarasi `constant`, maupun inisialisasi `for`.
 
-## Milestone 4: Perulangan `for i = init to end do ... endfor`
+## Milestone 4: Perulangan `for i = init to end [step k] do ... endfor`
 
-19. **Evaluasi Batas `init` dan `end` pada `for`:**
-    - Ekspresi `init` dan `end` dievaluasi **satu kali saja** sebelum perulangan dimulai. Jika variabel yang menjadi pembatas (`end`) diubah di dalam badan `for`, jumlah iterasi tidak ikut berubah.
-    - Jika `init > end` (misalnya `for i = 1 to 0 do`), badan perulangan dijalankan `0` kali, namun variabel `i` tetap telah terinisialisasi dengan nilai `init` (seperti `for i = n; i <= m; i++` di bahasa Go pada Slide Week 5&6 halaman 9).
-    - Variabel pencacah `i` wajib dideklarasikan di `kamus` dengan tipe `integer` (atau alias yang mengarah ke `integer`).
+19. **Evaluasi Batas `init`, `end`, dan `step` pada `for`:**
+    - Ekspresi `init`, `end`, dan `step` (jika ditulis) dievaluasi **satu kali saja** sebelum perulangan dimulai. Jika variabel yang menjadi pembatas (`end` atau `step`) diubah di dalam badan `for`, jumlah iterasi dan langkah tidak ikut berubah.
+    - Jika `step` tidak disertakan, nilai langkah default adalah `+1`.
+    - Jika `step > 0` dan `init > end` (atau `step < 0` dan `init < end`), badan perulangan dijalankan `0` kali, namun variabel `i` tetap telah terinisialisasi dengan nilai `init` (seperti `for i = n; i <= m; i++` di bahasa Go pada Slide Week 5&6 halaman 9).
+    - Jika `step` bernilai `0` saat dijalankan, interpreter menghentikan eksekusi dengan error runtime karena perulangan tidak akan pernah berhenti.
+    - Variabel pencacah `i` serta ekspresi `init`, `end`, dan `step` wajib bertipe `integer` (atau alias yang mengarah ke `integer`).
 
 ## Milestone 5: Fleksibilitas Ekspresi & Solusi Latihan Soal Slide
 

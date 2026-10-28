@@ -392,6 +392,9 @@ class Parser:
             for i = init to end do
                 <statements>
             endfor
+            for i <- init to end step k do
+                <statements>
+            endfor
         """
         for_tok = self.expect("FOR", "diharapkan 'for'.")
         var_tok = self.expect(
@@ -408,9 +411,14 @@ class Parser:
             "diharapkan kata kunci 'to' sesudah nilai awal perulangan 'for'.",
         )
         end_expr = self.parse_expr()
+
+        step_expr: Expr | None = None
+        if self.match("STEP"):
+            step_expr = self.parse_expr()
+
         self.expect(
             "DO",
-            "diharapkan kata kunci 'do' sesudah nilai batas akhir perulangan 'for'.",
+            "diharapkan kata kunci 'do' sesudah nilai batas akhir (atau 'step') perulangan 'for'.",
         )
 
         body: list[Stmt] = []
@@ -429,6 +437,7 @@ class Parser:
             line=for_tok.line,
             col=for_tok.col,
             var_col=var_tok.col,
+            step_expr=step_expr,
         )
 
     # =================================================================

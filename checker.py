@@ -393,6 +393,16 @@ class SemanticChecker:
                 self._line_text(stmt.end_expr.line),
             )
 
+        if stmt.step_expr is not None:
+            step_type = self.check_expr(stmt.step_expr)
+            if step_type != "integer":
+                raise semantic_error(
+                    f"nilai langkah (step) pada perulangan 'for' harus bertipe 'integer', bukan '{step_type}'.",
+                    stmt.step_expr.line,
+                    stmt.step_expr.col,
+                    self._line_text(stmt.step_expr.line),
+                )
+
         for body_stmt in stmt.body:
             self.check_statement(body_stmt)
 

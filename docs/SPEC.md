@@ -80,13 +80,17 @@ Deklarasi di dalam `kamus` dapat ditulis dalam urutan apa saja:
    ```text
    output(reamur, fahrenheit, kelvin)
    ```
-4. **Perulangan (`for ... to ... do ... endfor`):**
-   Mencacah naik `+1` dari `init` sampai `end` (inklusif). `init` dan `end` dievaluasi satu kali di awal. Jika `init > end`, badan perulangan dijalankan `0` kali:
+4. **Perulangan (`for ... to ... [step ...] do ... endfor`):**
+   Mencacah dari `init` sampai `end` (inklusif) dengan kenaikan default `+1`, atau sesuai nilai opsional `step k` (mendukung step positif untuk menghitung naik maupun step negatif untuk menghitung mundur). `init`, `end`, dan `step` dievaluasi satu kali di awal:
    ```text
    for j = 1 to n do
        input(x)
        totalJarak = x * 5
        output(totalJarak)
+   endfor
+
+   for i <- a to b step k do
+       output(i)
    endfor
    ```
 
@@ -127,6 +131,6 @@ statement      = assign_stmt | input_stmt | output_stmt | for_stmt ;
 assign_stmt    = lvalue ( "=" | "<-" ) expr ;
 input_stmt     = "input" "(" lvalue { "," lvalue } ")" ;
 output_stmt    = "output" "(" expr { "," expr } ")" ;
-for_stmt       = "for" IDENTIFIER ( "=" | "<-" ) expr "to" expr "do" { statement } "endfor" ;
+for_stmt       = "for" IDENTIFIER ( "=" | "<-" ) expr "to" expr [ "step" expr ] "do" { statement } "endfor" ;
 lvalue         = IDENTIFIER { "." IDENTIFIER } ;
 ```

@@ -600,6 +600,65 @@ endprogram"""
             execute_program(code_real_counter)
         self.assertEqual(ctx3.exception.category, KATEGORI_SEMAN)
 
+    def test_for_with_step_up_down_and_errors(self):
+        """Uji perulangan for dengan step positif, step negatif, dan error step 0 / bukan integer."""
+        code_step_up = """
+        program UjiStepNaik
+        kamus
+            i, a, b, k : integer
+        algoritma
+            input(a, b, k)
+            for i <- a to b step k do
+                output(i)
+            endfor
+        endprogram
+        """
+        self.assertEqual(
+            execute_program(code_step_up, "1 10 3").strip().splitlines(),
+            ["1", "4", "7", "10"],
+        )
+
+        code_step_down = """
+        program UjiStepTurun
+        kamus
+            i : integer
+        algoritma
+            for i = 10 to 2 step -3 do
+                output(i)
+            endfor
+        endprogram
+        """
+        self.assertEqual(
+            execute_program(code_step_down).strip().splitlines(),
+            ["10", "7", "4"],
+        )
+
+        # Step 0 harus menghasilkan runtime error
+        code_step_zero = """program TesStepNol
+kamus
+    i : integer
+algoritma
+    for i = 1 to 5 step 0 do
+        output(i)
+    endfor
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx_zero:
+            execute_program(code_step_zero)
+        self.assertEqual(ctx_zero.exception.category, KATEGORI_RUNTIME)
+
+        # Step bertipe real harus menghasilkan semantic error
+        code_step_real = """program TesStepReal
+kamus
+    i : integer
+algoritma
+    for i = 1 to 5 step 1.5 do
+        output(i)
+    endfor
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx_real:
+            execute_program(code_step_real)
+        self.assertEqual(ctx_real.exception.category, KATEGORI_SEMAN)
+
 
 class TestMilestone5(unittest.TestCase):
     def run_example_file(self, filename: str, input_text: str) -> str:

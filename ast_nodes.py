@@ -219,9 +219,12 @@ class OutputStmt(Stmt):
 @dataclass
 class ForStmt(Stmt):
     """
-    Mewakili instruksi perulangan for-to-do-endfor.
+    Mewakili instruksi perulangan for-to-[step]-do-endfor.
     Contoh:
         for j = 1 to n do
+            ...
+        endfor
+        for i <- a to b step k do
             ...
         endfor
     """
@@ -232,6 +235,7 @@ class ForStmt(Stmt):
     line: int
     col: int
     var_col: int = 1
+    step_expr: Expr | None = None
 
 
 # =====================================================================

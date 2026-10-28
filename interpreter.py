@@ -358,11 +358,13 @@ class Interpreter:
 
     def exec_for(self, stmt: ForStmt) -> None:
         """
-        Menjalankan perulangan 'for i = init to end do ... endfor'.
+        Menjalankan perulangan 'for i = init to end [step k] do ... endfor'.
         Aturan sesuai spesifikasi:
-        - init dan end dievaluasi SATU KALI saja di awal sebelum perulangan dimulai.
-        - i naik +1 setiap putaran, kedua ujung (init dan end) bersifat inklusif.
-        - Jika init > end, badan perulangan dijalankan 0 kali.
+        - init, end, dan step (jika ada) dievaluasi SATU KALI saja di awal sebelum perulangan dimulai.
+        - Jika step tidak ditulis, nilai default step adalah +1.
+        - Jika step == 0, laporkan kesalahan runtime (karena perulangan tidak akan pernah berhenti).
+        - Jika step > 0, berjalan selama i <= end (jika init > end, jalan 0 kali).
+        - Jika step < 0, berjalan selama i >= end (jika init < end, jalan 0 kali).
         """
         start_val, _ = self.eval_expr(stmt.start_expr)
         end_val, _ = self.eval_expr(stmt.end_expr)
@@ -370,12 +372,32 @@ class Interpreter:
         curr = wrap_int64(int(start_val))
         limit = wrap_int64(int(end_val))
 
+        if stmt.step_expr is not None:
+            step_val, _ = self.eval_expr(stmt.step_expr)
+            step = wrap_int64(int(step_val))
+            if step == 0:
+                raise runtime_error(
+                    "nilai langkah (step) pada perulangan 'for' tidak boleh 0.",
+                    stmt.step_expr.line,
+                    stmt.step_expr.col,
+                    self._line_text(stmt.step_expr.line),
+                )
+        else:
+            step = 1
+
         self.env[stmt.var_name] = curr
-        while curr <= limit:
-            self.env[stmt.var_name] = wrap_int64(curr)
-            for body_stmt in stmt.body:
-                self.exec_stmt(body_stmt)
-            curr += 1
+        if step > 0:
+            while curr <= limit:
+                self.env[stmt.var_name] = wrap_int64(curr)
+                for body_stmt in stmt.body:
+                    self.exec_stmt(body_stmt)
+                curr += step
+        else:
+            while curr >= limit:
+                self.env[stmt.var_name] = wrap_int64(curr)
+                for body_stmt in stmt.body:
+                    self.exec_stmt(body_stmt)
+                curr += step
 
     # =================================================================
     # 3. EVALUASI EKSPRESI (MENGHITUNG NILAI RUMUS)

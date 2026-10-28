@@ -1,12 +1,8 @@
 program uang
 kamus
-	semester, nilai : integer
-	ipk : real
-	lomba, cek, ceksem, cekj1 : boolean
+	i, a, b, k : integer
 algoritma
-	input(semester, nilai, ipk, lomba)
-	ceksem <- semester >= 2
-	cekj1 <- nilai >= 80 and ipk >= 3.25
-	cek <- ceksem and (cekj1 or lomba)
-	output(cek)
+	input(a)
+	for i <- a to b step k do
+		output(i)
 endprogram
