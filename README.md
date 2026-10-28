@@ -1,6 +1,6 @@
 # Interpreter Pseudocode Alpro 1
 
-Interpreter baris perintah (_command-line_) berbasis **Python 3** (hanya menggunakan _standard library_ bawaan Python) untuk menjalankan kode pseudocode mata kuliah **Algoritma dan Pemrograman 1** di Universitas Telkom secara langsung tanpa perlu menerjemahkannya ke bahasa lain.
+Interpreter baris perintah (_command-line_) berbasis **Python 3** (hanya menggunakan _standard library_ bawaan Python) untuk menjalankan kode pseudocode.
 
 Proyek ini ditulis dengan gaya kode yang sederhana, mudah dibaca oleh pemula, dan dilengkapi komentar penjelasan dalam bahasa Indonesia.
 
@@ -38,17 +38,6 @@ Setiap kali kamu menjalankan `python pseudo.py program.pseudo`, kode pseudocode 
    Menjalankan pohon AST baris demi baris, membaca input dari `stdin` (ala `fmt.Scan` di Go), menghitung ekspresi matematika/logika/bitwise, dan mencetak hasil ke `stdout`.
 6. **`errors.py` (Penanganan Pesan Error Bahasa Indonesia)**
    Menampilkan pesan kesalahan yang ramah dengan nomor baris, kategori kesalahan (`kesalahan sintaks`, `kesalahan tipe/deklarasi`, atau `kesalahan saat program berjalan`), dan penunjuk `^` tepat di bawah letak kesalahan—tanpa pernah menampilkan _Python traceback_.
-
----
-
-## Cara Menambahkan Fitur Baru di Minggu Kuliah Berikutnya
-
-Saat materi perkuliahan bertambah (misalnya `if/else`, `while`, `array`, fungsi, atau prosedur), kamu cukup melakukan 4 langkah terisolasi:
-
-1. Tambahkan class node baru di `ast_nodes.py`.
-2. Tambahkan metode `parse_<fitur>()` di `parser.py`.
-3. Tambahkan metode `check_<fitur>()` di `checker.py`.
-4. Tambahkan metode `exec_<fitur>()` di `interpreter.py`.
 
 ---
 
