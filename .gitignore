@@ -1,5 +1,6 @@
-# Campus lecture slides (keep local only)
+# Campus lecture slides & local scratch files (keep local only)
 slides/
+coba.pseudo
 
 # Python byte-compiled / cache / build files
 __pycache__/

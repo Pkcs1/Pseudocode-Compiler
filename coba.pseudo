@@ -1,8 +1,0 @@
-program uang
-kamus
-	i, a, b, k : integer
-algoritma
-	input(a)
-	for i <- a to b step k do
-		output(i)
-endprogram
