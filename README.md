@@ -1,20 +1,32 @@
-# Interpreter Pseudocode Alpro 1
+# Pseudocode Interpreter (Alpro 1)
 
-Interpreter baris perintah (_command-line_) berbasis **Python 3** (hanya menggunakan _standard library_ bawaan Python) untuk menjalankan kode pseudocode.
-
-Proyek ini ditulis dengan gaya kode yang sederhana, mudah dibaca oleh pemula, dan dilengkapi komentar penjelasan dalam bahasa Indonesia.
+Interpreter berbasis Python untuk menjalankan kode pseudocode sesuai standar perkuliahan **Algoritma dan Pemrograman 1 (Telkom University)**. Tidak memerlukan instalasi library tambahan di luar bawaan Python.
 
 ---
 
-## Cara Pakai
+## 1. Prasyarat
 
-Jalankan file `.pseudo` langsung dari terminal:
+- **Python 3.10** atau versi yang lebih baru.
+
+Cek versi Python di terminal atau Command Prompt:
 
 ```bash
-python pseudo.py tests/examples/jarak.pseudo
+python --version
 ```
 
-Lalu ketik masukan (input) yang diminta program (misalnya `3 4 5`) dan tekan **Enter**, atau arahkan input dari file `.in`:
+---
+
+## 2. Cara Menjalankan Program
+
+Buat file berekstensi `.pseudo` (misalnya `latihan.pseudo`), lalu jalankan melalui terminal:
+
+```bash
+python pseudo.py latihan.pseudo
+```
+
+Jika program meminta masukan (`input`), ketik nilai masukan di terminal (dipisahkan dengan spasi atau baris baru) lalu tekan **Enter**.
+
+Untuk mengambil masukan langsung dari file teks:
 
 ```bash
 python pseudo.py tests/examples/jarak.pseudo < tests/examples/jarak.in
@@ -22,36 +34,151 @@ python pseudo.py tests/examples/jarak.pseudo < tests/examples/jarak.in
 
 ---
 
-## Arsitektur Proyek (1 File per Tahapan)
+## 3. Panduan Sintaks Pseudocode
 
-Setiap kali kamu menjalankan `python pseudo.py program.pseudo`, kode pseudocode kamu diproses melalui tahapan berikut secara berurutan:
+Semua kata kunci (*keywords*) ditulis menggunakan **huruf kecil (lowercase)**. Komentar satu baris dapat ditulis menggunakan `//`.
 
-1. **`lexer.py` (Tahap 1 — Lexer / Tokenizer)**
-   Membaca teks kode sumber huruf demi huruf, menormalisasi _smart quotes_ dari PowerPoint, mengabaikan komentar `//`, dan mengubah teks menjadi daftar `Token`.
-2. **`ast_nodes.py` (Definisi Pohon AST)**
-   Kumpulan `@dataclass` sederhana sebagai wadah penyimpan struktur program di memori (`Program`, `VarDecl`, `ConstDecl`, `AliasDecl`, `StructDecl`, `AssignStmt`, `InputStmt`, `OutputStmt`, `ForStmt`, dll).
-3. **`parser.py` (Tahap 2 — Recursive-Descent Parser)**
-   Memeriksa urutan `Token` sesuai tata bahasa (EBNF) dan menyusun pohon AST beserta 9 level prioritas operator.
-4. **`checker.py` (Tahap 3 — Semantic Checker)**
-   Berjalan **sebelum** program dieksekusi untuk memeriksa kamus & tipe data: memastikan semua variabel sudah dideklarasikan, melarang perubahan nilai konstanta, dan mencegah ketidakcocokan tipe (seperti mengisi variabel `integer` dengan nilai `real`).
-5. **`interpreter.py` (Tahap 4 — Interpreter)**
-   Menjalankan pohon AST baris demi baris, membaca input dari `stdin` (ala `fmt.Scan` di Go), menghitung ekspresi matematika/logika/bitwise, dan mencetak hasil ke `stdout`.
-6. **`errors.py` (Penanganan Pesan Error Bahasa Indonesia)**
-   Menampilkan pesan kesalahan yang ramah dengan nomor baris, kategori kesalahan (`kesalahan sintaks`, `kesalahan tipe/deklarasi`, atau `kesalahan saat program berjalan`), dan penunjuk `^` tepat di bawah letak kesalahan—tanpa pernah menampilkan _Python traceback_.
+### Kerangka Program
+
+Setiap program wajib memiliki bagian `program`, `kamus`, `algoritma`, dan ditutup dengan `endprogram`:
+
+```text
+program NamaProgram
+kamus
+    // deklarasi tipe, konstanta, dan variabel
+algoritma
+    // instruksi program
+endprogram
+```
+
+### Tipe Data Dasar
+
+| Tipe Data | Contoh Nilai | Keterangan |
+| :--- | :--- | :--- |
+| `integer` | `10`, `-5`, `0` | Bilangan bulat (64-bit signed) |
+| `real` | `3.14`, `0.5` | Bilangan desimal (floating-point) |
+| `string` | `"Informatika"` | Teks dalam tanda kutip ganda (`"..."`) |
+| `char` | `'A'`, `'k'` | Karakter tunggal dalam tanda kutip satu (`'...'`) |
+| `boolean` | `true`, `false` | Nilai logika kebenaran |
+
+### Deklarasi pada Bagian `kamus`
+
+Urutan deklarasi di dalam `kamus` bersifat bebas:
+
+```text
+kamus
+    // 1. Variabel
+    a, b, hasil : integer
+    rata_rata : real
+
+    // 2. Konstanta (nilai tetap, tidak dapat diubah di algoritma)
+    constant PI : real = 3.14
+    constant BONUS : integer <- 10
+
+    // 3. Tipe Alias
+    type bilangan : integer
+
+    // 4. Tipe Bentukan (Struct)
+    type tanggal_lahir <
+        hari, tahun : integer
+        bulan : string
+    >
+    tgl : tanggal_lahir
+```
+
+### Instruksi pada Bagian `algoritma`
+
+#### Pengisian Nilai (Assignment)
+Dapat menggunakan tanda `=` maupun panah `<-`:
+
+```text
+a = 10
+b <- a + 5
+tgl.hari <- 17
+tgl.bulan = "Agustus"
+```
+
+#### Masukan dan Keluaran (`input` & `output`)
+- `input(...)` membaca nilai yang dipisahkan oleh spasi atau baris baru.
+- `output(...)` mencetak nilai ke layar (dipisahkan spasi dan diakhiri baris baru).
+
+```text
+input(a, b)
+output("Hasil penjumlahan:", a + b)
+```
+
+#### Perulangan `for`
+Mencacah dari nilai awal (`init`) hingga batas akhir (`end`) secara inklusif. Secara bawaan nilai pencacah bertambah `+1` setiap putaran, atau dapat diatur menggunakan kata kunci opsional `step`:
+
+```text
+// Naik +1 setiap putaran
+for i = 1 to 5 do
+    output(i)
+endfor
+
+// Naik sesuai langkah (step) positif
+for i <- a to b step k do
+    output(i)
+endfor
+
+// Hitung mundur dengan step negatif
+for i = 10 to 1 step -2 do
+    output(i)
+endfor
+```
+
+### Operator yang Didukung
+
+| Kategori | Operator | Keterangan |
+| :--- | :--- | :--- |
+| Aritmatika | `+`, `-`, `*`, `/`, `^` | `/` selalu menghasilkan `real`; `^` adalah pangkat |
+| Pembagian Bulat | `div`, `mod` | Hasil bagi bulat dan sisa bagi khusus tipe `integer` |
+| Perbandingan | `<`, `<=`, `>`, `>=`, `==`, `!=`, `<>` | Menghasilkan nilai `boolean` (`<>` sama dengan `!=`) |
+| Logika | `not`, `and`, `or` | Operasi logika untuk tipe `boolean` |
+| Bitwise | `<<`, `>>`, `&`, `\|` | Operasi bit khusus tipe `integer` |
+| String | `+`, `len(s)` | `+` menggabungkan dua `string`; `len(s)` menghitung panjang karakter |
 
 ---
 
-## Menjalankan Pengujian Otomatis (Unit Tests)
+## 4. Contoh Program
 
-Untuk menjalankan seluruh unit test (mencakup contoh wajib, skenario error, latihan soal slide Minggu 2–6, dan kasus uji fleksibilitas):
-
-```bash
-python -m unittest discover -s tests -p "test_*.py" -v
+```text
+program HitungLuasTabung
+kamus
+    constant PI : real = 3.14
+    type tabung <
+        jari_jari, tinggi : real
+        volume : real
+    >
+    t : tabung
+algoritma
+    input(t.jari_jari, t.tinggi)
+    t.volume = PI * (t.jari_jari ^ 2) * t.tinggi
+    output(t.volume)
+endprogram
 ```
 
 ---
 
-## Dokumentasi Tambahan
+## 5. Penjelasan Pesan Error
 
-- [`docs/SPEC.md`](docs/SPEC.md): Spesifikasi lengkap sintaks, tipe data, operator, dan EBNF bahasa pseudocode.
-- [`docs/DECISIONS.md`](docs/DECISIONS.md): Catatan keputusan desain dan penyelesaian bagian yang ambigu di slide kuliah.
+Jika terdapat kesalahan pada kode, interpreter akan menampilkan nomor baris beserta letak kesalahan dalam bahasa Indonesia:
+
+1. **Kesalahan sintaks** — Penulisan kode tidak sesuai tata bahasa (misalnya lupa menulis `endprogram`, `endfor`, atau tanda titik dua `:` pada `kamus`).
+2. **Kesalahan tipe/deklarasi** — Variabel belum terdaftar di `kamus`, mencoba mengubah nilai `constant`, atau memasukkan nilai yang tidak sesuai tipe datanya (seperti mengisi variabel `integer` dengan nilai `real`).
+3. **Kesalahan saat program berjalan (runtime)** — Terjadi saat eksekusi berlangsung, seperti pembagian dengan nol (`0`), variabel dipakai sebelum diisi nilai, `step` bernilai `0`, atau masukan dari pengguna tidak sesuai tipe variabel.
+
+---
+
+## 6. Struktur Proyek & Pengujian
+
+- `pseudo.py` — Program utama (CLI) untuk menjalankan file `.pseudo`.
+- `lexer.py`, `parser.py`, `ast_nodes.py`, `checker.py`, `interpreter.py`, `errors.py` — Modul internal kompilasi dan eksekusi.
+- `tests/examples/` — Kumpulan contoh program `.pseudo` beserta sampel masukan (`.in`) dan keluaran (`.out`).
+- `docs/SPEC.md` & `docs/DECISIONS.md` — Dokumentasi teknis spesifikasi tata bahasa (EBNF) dan aturan semantik.
+
+Untuk menjalankan seluruh rangkaian pengujian otomatis (*unit test*):
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
