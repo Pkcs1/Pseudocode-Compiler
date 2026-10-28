@@ -1,9 +1,12 @@
-program test
+program uang
 kamus
-	i, n : integer
+	semester, nilai : integer
+	ipk : real
+	lomba, cek, ceksem, cekj1 : boolean
 algoritma
-	input(n)
-	for i <- 1 to n do
-		output("Hello World")
-	endfor
+	input(semester, nilai, ipk, lomba)
+	ceksem <- semester >= 2
+	cekj1 <- nilai >= 80 and ipk >= 3.25
+	cek <- ceksem and (cekj1 or lomba)
+	output(cek)
 endprogram

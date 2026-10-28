@@ -1,6 +1,6 @@
-# Interpreter Pseudocode Alpro 1 (Telkom University)
+# Interpreter Pseudocode Alpro 1
 
-Interpreter baris perintah (*command-line*) berbasis **Python 3** (hanya menggunakan *standard library* bawaan Python) untuk menjalankan kode pseudocode mata kuliah **Algoritma dan Pemrograman 1** di Universitas Telkom secara langsung tanpa perlu menerjemahkannya ke bahasa lain.
+Interpreter baris perintah (_command-line_) berbasis **Python 3** (hanya menggunakan _standard library_ bawaan Python) untuk menjalankan kode pseudocode mata kuliah **Algoritma dan Pemrograman 1** di Universitas Telkom secara langsung tanpa perlu menerjemahkannya ke bahasa lain.
 
 Proyek ini ditulis dengan gaya kode yang sederhana, mudah dibaca oleh pemula, dan dilengkapi komentar penjelasan dalam bahasa Indonesia.
 
@@ -27,7 +27,7 @@ python pseudo.py tests/examples/jarak.pseudo < tests/examples/jarak.in
 Setiap kali kamu menjalankan `python pseudo.py program.pseudo`, kode pseudocode kamu diproses melalui tahapan berikut secara berurutan:
 
 1. **`lexer.py` (Tahap 1 — Lexer / Tokenizer)**
-   Membaca teks kode sumber huruf demi huruf, menormalisasi *smart quotes* dari PowerPoint, mengabaikan komentar `//`, dan mengubah teks menjadi daftar `Token`.
+   Membaca teks kode sumber huruf demi huruf, menormalisasi _smart quotes_ dari PowerPoint, mengabaikan komentar `//`, dan mengubah teks menjadi daftar `Token`.
 2. **`ast_nodes.py` (Definisi Pohon AST)**
    Kumpulan `@dataclass` sederhana sebagai wadah penyimpan struktur program di memori (`Program`, `VarDecl`, `ConstDecl`, `AliasDecl`, `StructDecl`, `AssignStmt`, `InputStmt`, `OutputStmt`, `ForStmt`, dll).
 3. **`parser.py` (Tahap 2 — Recursive-Descent Parser)**
@@ -37,13 +37,14 @@ Setiap kali kamu menjalankan `python pseudo.py program.pseudo`, kode pseudocode 
 5. **`interpreter.py` (Tahap 4 — Interpreter)**
    Menjalankan pohon AST baris demi baris, membaca input dari `stdin` (ala `fmt.Scan` di Go), menghitung ekspresi matematika/logika/bitwise, dan mencetak hasil ke `stdout`.
 6. **`errors.py` (Penanganan Pesan Error Bahasa Indonesia)**
-   Menampilkan pesan kesalahan yang ramah dengan nomor baris, kategori kesalahan (`kesalahan sintaks`, `kesalahan tipe/deklarasi`, atau `kesalahan saat program berjalan`), dan penunjuk `^` tepat di bawah letak kesalahan—tanpa pernah menampilkan *Python traceback*.
+   Menampilkan pesan kesalahan yang ramah dengan nomor baris, kategori kesalahan (`kesalahan sintaks`, `kesalahan tipe/deklarasi`, atau `kesalahan saat program berjalan`), dan penunjuk `^` tepat di bawah letak kesalahan—tanpa pernah menampilkan _Python traceback_.
 
 ---
 
 ## Cara Menambahkan Fitur Baru di Minggu Kuliah Berikutnya
 
 Saat materi perkuliahan bertambah (misalnya `if/else`, `while`, `array`, fungsi, atau prosedur), kamu cukup melakukan 4 langkah terisolasi:
+
 1. Tambahkan class node baru di `ast_nodes.py`.
 2. Tambahkan metode `parse_<fitur>()` di `parser.py`.
 3. Tambahkan metode `check_<fitur>()` di `checker.py`.
