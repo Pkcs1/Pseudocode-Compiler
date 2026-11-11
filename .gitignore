@@ -40,3 +40,8 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Next.js web frontend build & dependencies
+web/node_modules/
+web/.next/
+web/out/
