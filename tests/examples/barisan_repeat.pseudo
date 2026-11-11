@@ -1,0 +1,11 @@
+program BarisanA
+kamus
+    N, iterasi : integer
+algoritma
+    input(N)
+    iterasi <- 0
+    repeat
+        iterasi <- iterasi + 1
+        output(iterasi)
+    until iterasi == N
+endprogram

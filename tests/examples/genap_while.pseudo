@@ -1,0 +1,12 @@
+program Genap
+kamus
+    xi, total : integer
+algoritma
+    total <- 0
+    input(xi)
+    while xi mod 2 == 0 do
+        total <- total + xi
+        input(xi)
+    endwhile
+    output(total)
+endprogram

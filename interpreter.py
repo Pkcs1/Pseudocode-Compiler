@@ -27,16 +27,19 @@ from ast_nodes import (
     Expr,
     FieldAccessExpr,
     ForStmt,
+    IfStmt,
     InputStmt,
     LenExpr,
     LiteralExpr,
     OutputStmt,
     Program,
+    RepeatStmt,
     Stmt,
     StructDecl,
     UnaryExpr,
     VarDecl,
     VarExpr,
+    WhileStmt,
 )
 from errors import runtime_error
 
@@ -133,15 +136,34 @@ class Interpreter:
         source_lines: list[str],
         stdin: TextIO = sys.stdin,
         stdout: TextIO = sys.stdout,
+        max_steps: int | None = None,
     ):
         self.source_lines = source_lines
         self.reader = InputReader(stdin)
         self.stdout = stdout
+        self.max_steps = max_steps
+        self.steps = 0
 
         self.aliases: dict[str, str] = {}
         self.structs: dict[str, dict[str, str]] = {}
         self.var_types: dict[str, str] = {}
         self.env: dict[str, object] = {}
+
+    def _tick_step(self, stmt: Stmt) -> None:
+        if self.max_steps is None:
+            return
+        self.steps += 1
+        if self.steps > self.max_steps:
+            raise runtime_error(
+                f"batas maksimum langkah eksekusi ({self.max_steps}) terlampaui (kemungkinan perulangan tak berujung).",
+                stmt.line,
+                stmt.col,
+                self._line_text(stmt.line),
+            )
+
+    def _exec_block(self, stmts: list[Stmt]) -> None:
+        for body_stmt in stmts:
+            self.exec_stmt(body_stmt)
 
     def _line_text(self, line_no: int) -> str:
         if 1 <= line_no <= len(self.source_lines):
@@ -252,6 +274,7 @@ class Interpreter:
     # =================================================================
 
     def exec_stmt(self, stmt: Stmt) -> None:
+        self._tick_step(stmt)
         if isinstance(stmt, AssignStmt):
             self.exec_assign(stmt)
         elif isinstance(stmt, InputStmt):
@@ -260,6 +283,12 @@ class Interpreter:
             self.exec_output(stmt)
         elif isinstance(stmt, ForStmt):
             self.exec_for(stmt)
+        elif isinstance(stmt, IfStmt):
+            self.exec_if(stmt)
+        elif isinstance(stmt, WhileStmt):
+            self.exec_while(stmt)
+        elif isinstance(stmt, RepeatStmt):
+            self.exec_repeat(stmt)
         else:
             raise runtime_error(
                 "instruksi ini belum dapat dijalankan oleh interpreter.",
@@ -388,16 +417,43 @@ class Interpreter:
         self.env[stmt.var_name] = curr
         if step > 0:
             while curr <= limit:
+                self._tick_step(stmt)
                 self.env[stmt.var_name] = wrap_int64(curr)
-                for body_stmt in stmt.body:
-                    self.exec_stmt(body_stmt)
+                self._exec_block(stmt.body)
                 curr += step
         else:
             while curr >= limit:
+                self._tick_step(stmt)
                 self.env[stmt.var_name] = wrap_int64(curr)
-                for body_stmt in stmt.body:
-                    self.exec_stmt(body_stmt)
+                self._exec_block(stmt.body)
                 curr += step
+
+    def exec_if(self, stmt: IfStmt) -> None:
+        """Menjalankan cabang pertama yang kondisinya bernilai true, atau blok else."""
+        for branch in stmt.branches:
+            cond_val, _ = self.eval_expr(branch.condition)
+            if bool(cond_val):
+                self._exec_block(branch.body)
+                return
+        self._exec_block(stmt.else_body)
+
+    def exec_while(self, stmt: WhileStmt) -> None:
+        """Menjalankan perulangan while-do-endwhile selama kondisi bernilai true."""
+        while True:
+            cond_val, _ = self.eval_expr(stmt.condition)
+            if not bool(cond_val):
+                break
+            self._tick_step(stmt)
+            self._exec_block(stmt.body)
+
+    def exec_repeat(self, stmt: RepeatStmt) -> None:
+        """Menjalankan perulangan repeat-until minimal 1 kali sampai kondisi bernilai true."""
+        while True:
+            self._tick_step(stmt)
+            self._exec_block(stmt.body)
+            cond_val, _ = self.eval_expr(stmt.condition)
+            if bool(cond_val):
+                break
 
     # =================================================================
     # 3. EVALUASI EKSPRESI (MENGHITUNG NILAI RUMUS)

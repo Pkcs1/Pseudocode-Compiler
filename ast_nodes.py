@@ -238,6 +238,68 @@ class ForStmt(Stmt):
     step_expr: Expr | None = None
 
 
+@dataclass
+class IfBranch:
+    """
+    Satu cabang kondisi pada percabangan if / else if.
+    """
+    condition: Expr
+    body: list[Stmt]
+    line: int
+    col: int
+
+
+@dataclass
+class IfStmt(Stmt):
+    """
+    Mewakili instruksi percabangan if-then-[else if]-[else]-endif.
+    Contoh:
+        if x < 0 then
+            x = -x
+        else if x == 0 then
+            output("nol")
+        else
+            output(x)
+        endif
+    """
+    branches: list[IfBranch]
+    else_body: list[Stmt]
+    line: int
+    col: int
+
+
+@dataclass
+class WhileStmt(Stmt):
+    """
+    Mewakili instruksi perulangan while-do-endwhile (uji kondisi di awal).
+    Contoh:
+        while x > 0 do
+            ...
+        endwhile
+    """
+    condition: Expr
+    body: list[Stmt]
+    line: int
+    col: int
+
+
+@dataclass
+class RepeatStmt(Stmt):
+    """
+    Mewakili instruksi perulangan repeat-until (uji kondisi di akhir, minimal 1x jalan).
+    Contoh:
+        repeat
+            ...
+        until i == n
+    """
+    body: list[Stmt]
+    condition: Expr
+    line: int
+    col: int
+    until_line: int = 1
+    until_col: int = 1
+
+
 # =====================================================================
 # 4. NODE UTAMA PROGRAM
 # =====================================================================

@@ -48,6 +48,14 @@ KEYWORDS = {
     "step": "STEP",
     "do": "DO",
     "endfor": "ENDFOR",
+    "if": "IF",
+    "then": "THEN",
+    "else": "ELSE",
+    "endif": "ENDIF",
+    "while": "WHILE",
+    "endwhile": "ENDWHILE",
+    "repeat": "REPEAT",
+    "until": "UNTIL",
 }
 
 # Operator dua karakter (harus dicek lebih dulu sebelum operator satu karakter!)
@@ -99,14 +107,16 @@ class Token:
 
 def normalize_smart_quotes(source: str) -> str:
     """
-    Mengubah tanda kutip miring ("smart quotes" hasil copy-paste dari slide PPT)
-    menjadi tanda kutip lurus biasa supaya tidak menyebabkan error.
+    Mengubah tanda kutip miring ("smart quotes") serta karakter panah Unicode
+    hasil copy-paste dari slide PPT menjadi simbol ASCII standar.
     """
     return (
         source.replace("\u201c", '"')
         .replace("\u201d", '"')
         .replace("\u2018", "'")
         .replace("\u2019", "'")
+        .replace("\u2190", "<-")
+        .replace("\uf0df", "<-")
     )
 
 
@@ -143,14 +153,34 @@ def tokenize(source: str) -> list[Token]:
             col += 1
             continue
 
-        # 2. KOMENTAR SEMENTARA (Diisolasi di satu tempat ini saja!)
-        # Slide kuliah belum mendefinisikan sintaks komentar, jadi untuk sementara
-        # kita mendukung "//" sampai akhir baris. Kalau nanti aturan kampus berubah,
-        # cukup ubah blok "if" yang satu ini.
+        # 2. Komentar satu baris '//' dan komentar blok '{ ... }' sesuai slide kuliah
         if ch == "/" and pos + 1 < length and source[pos + 1] == "/":
             while pos < length and source[pos] != "\n":
                 pos += 1
                 col += 1
+            continue
+
+        if ch == "{":
+            start_line = line
+            start_col = col
+            pos += 1
+            col += 1
+            while pos < length and source[pos] != "}":
+                if source[pos] == "\n":
+                    line += 1
+                    col = 1
+                else:
+                    col += 1
+                pos += 1
+            if pos >= length:
+                raise syntax_error(
+                    "komentar '{ ... }' tidak ditutup dengan tanda '}'.",
+                    start_line,
+                    start_col,
+                    current_line_text(start_line),
+                )
+            pos += 1
+            col += 1
             continue
 
         # 3. Literal String: diawali dan diakhiri tanda petik dua (")

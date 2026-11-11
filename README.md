@@ -36,7 +36,7 @@ python pseudo.py tests/examples/jarak.pseudo < tests/examples/jarak.in
 
 ## 3. Panduan Sintaks Pseudocode
 
-Semua kata kunci (*keywords*) ditulis menggunakan **huruf kecil (lowercase)**. Komentar satu baris dapat ditulis menggunakan `//`.
+Semua kata kunci (*keywords*) ditulis menggunakan **huruf kecil (lowercase)**. Komentar dapat ditulis menggunakan `// ...` (satu baris) maupun `{ ... }` (satu atau multi-baris).
 
 ### Kerangka Program
 
@@ -125,6 +125,35 @@ endfor
 for i = 10 to 1 step -2 do
     output(i)
 endfor
+```
+
+#### Percabangan (`if ... then ... [else if ... then ...] [else ...] endif`)
+Mengeksekusi blok instruksi berdasarkan kondisi bertipe `boolean`:
+
+```text
+if ikk < 2.00 then
+    output("Poor")
+else if ikk <= 3.00 then
+    output("Fair")
+else
+    output("Good")
+endif
+```
+
+#### Perulangan Kondisi (`while` & `repeat-until`)
+- `while <kondisi> do ... endwhile`: mengulang **selama** kondisi bernilai `true` (pengecekan di awal).
+- `repeat ... until <kondisi>`: menjalankan isi minimal 1 kali, lalu mengulang **sampai** kondisi bernilai `true` (pengecekan di akhir).
+
+```text
+while xi mod 2 == 0 do
+    total <- total + xi
+    input(xi)
+endwhile
+
+repeat
+    iterasi <- iterasi + 1
+    output(iterasi)
+until iterasi == n
 ```
 
 ### Operator yang Didukung

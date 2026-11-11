@@ -33,6 +33,7 @@ def run_source(
     source: str,
     stdin: TextIO = sys.stdin,
     stdout: TextIO = sys.stdout,
+    max_steps: int | None = None,
 ) -> None:
     """
     Menjalankan kode sumber pseudocode dari tahap Lexer sampai Interpreter.
@@ -51,7 +52,12 @@ def run_source(
     check(program, normalized_source)
 
     # Tahap 4: Interpreter
-    interpreter = Interpreter(source_lines=source_lines, stdin=stdin, stdout=stdout)
+    interpreter = Interpreter(
+        source_lines=source_lines,
+        stdin=stdin,
+        stdout=stdout,
+        max_steps=max_steps,
+    )
     interpreter.run(program)
 
 

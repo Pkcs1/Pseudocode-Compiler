@@ -1,6 +1,6 @@
 # Spesifikasi Bahasa Pseudocode Alpro 1 (`SPEC.md`)
 
-Dokumen ini menjelaskan aturan sintaks dan semantik bahasa pseudocode **Algoritma dan Pemrograman 1 (Telkom University)** yang didukung oleh interpreter ini (cakupan materi Minggu 2 s.d. Minggu 6).
+Dokumen ini menjelaskan aturan sintaks dan semantik bahasa pseudocode **Algoritma dan Pemrograman 1 (Telkom University)** yang didukung oleh interpreter ini (cakupan penuh materi Minggu 1 s.d. Minggu 15).
 
 ---
 
@@ -80,7 +80,9 @@ Deklarasi di dalam `kamus` dapat ditulis dalam urutan apa saja:
    ```text
    output(reamur, fahrenheit, kelvin)
    ```
-4. **Perulangan (`for ... to ... [step ...] do ... endfor`):**
+4. **Komentar:**
+   Mendukung komentar satu baris `// ...` serta komentar blok gaya slide kuliah `{ ... }` (dapat satu baris maupun multi-baris).
+5. **Perulangan `for` (`for ... to ... [step ...] do ... endfor`):**
    Mencacah dari `init` sampai `end` (inklusif) dengan kenaikan default `+1`, atau sesuai nilai opsional `step k` (mendukung step positif untuk menghitung naik maupun step negatif untuk menghitung mundur). `init`, `end`, dan `step` dievaluasi satu kali di awal:
    ```text
    for j = 1 to n do
@@ -93,6 +95,35 @@ Deklarasi di dalam `kamus` dapat ditulis dalam urutan apa saja:
        output(i)
    endfor
    ```
+6. **Percabangan (`if ... then ... [else if ... then ...] [else ...] endif`):**
+   Mendukung bentuk `if-then`, `if-then-else`, rantai `else if` (satu `endif` penutup), maupun `if` bersarang di dalam blok `else` (masing-masing ditutup `endif`). Seluruh ekspresi kondisi wajib bertipe `boolean`:
+   ```text
+   if ikk < 2.00 then
+       output("Poor")
+   else if 2.00 <= ikk and ikk <= 2.75 then
+       output("Fair")
+   else
+       output("Good")
+   endif
+   ```
+7. **Perulangan `while` (`while ... do ... endwhile`):**
+   Mengevaluasi kondisi (`boolean`) di awal setiap iterasi. Badan perulangan dijalankan berulang kali selama kondisi bernilai `true` (bisa 0 kali jika kondisi awal `false`):
+   ```text
+   while xi mod 2 == 0 do
+       total <- total + xi
+       input(xi)
+   endwhile
+   ```
+8. **Perulangan `repeat-until` (`repeat ... until ...`):**
+   Menjalankan badan perulangan minimal 1 kali, lalu mengevaluasi kondisi berhenti (`boolean`) di akhir setiap iterasi hingga kondisi bernilai `true`:
+   ```text
+   repeat
+       iterasi <- iterasi + 1
+       output(iterasi)
+   until iterasi == n
+   ```
+9. **Komposisi Struktur Kontrol:**
+   Seluruh instruksi percabangan (`if`) dan perulangan (`for`, `while`, `repeat-until`) dapat disarang (*nested*) secara bebas satu sama lain.
 
 ---
 
@@ -127,10 +158,13 @@ var_decl       = id_list ":" type_name ;
 id_list        = IDENTIFIER { "," IDENTIFIER } ;
 type_name      = "integer" | "real" | "string" | "boolean" | "char" | IDENTIFIER ;
 
-statement      = assign_stmt | input_stmt | output_stmt | for_stmt ;
+statement      = assign_stmt | input_stmt | output_stmt | for_stmt | if_stmt | while_stmt | repeat_stmt ;
 assign_stmt    = lvalue ( "=" | "<-" ) expr ;
 input_stmt     = "input" "(" lvalue { "," lvalue } ")" ;
 output_stmt    = "output" "(" expr { "," expr } ")" ;
 for_stmt       = "for" IDENTIFIER ( "=" | "<-" ) expr "to" expr [ "step" expr ] "do" { statement } "endfor" ;
+if_stmt        = "if" expr "then" { statement } { "else" "if" expr "then" { statement } } [ "else" { statement } ] "endif" ;
+while_stmt     = "while" expr "do" { statement } "endwhile" ;
+repeat_stmt    = "repeat" { statement } "until" expr ;
 lvalue         = IDENTIFIER { "." IDENTIFIER } ;
 ```

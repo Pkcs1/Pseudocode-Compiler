@@ -98,6 +98,24 @@ Dokumen ini mencatat semua keputusan semantik dan aturan perilaku yang diterapka
 22. **Catatan Latihan Soal #5 Minggu 4 (`Investasi Saham`):**
     - Rumus pajak keuntungan adalah `10%` dari keuntungan kotor (`s.untung_kotor * 0.1`). Pada kasus uji pertama (untung positif), rumus linier menghasilkan `177600` sesuai slide. Kasus uji kedua di slide (saat rugi pajak menjadi `0`) membutuhkan percabangan `if/else` yang baru diajarkan di minggu kuliah berikutnya.
 
+## Milestone 6: Percabangan (`if/else if/else`), Perulangan Kondisi (`while`, `repeat-until`), dan Materi Minggu 9–15
+
+23. **Disambiguasi `else if` (Satu `endif`) vs `else` Berisi `if` Bersarang (Dua `endif`):**
+    - Pada Slide Week 10 halaman 5, percabangan bertingkat ditulis sebagai `else` diikuti baris baru `if ... then ... endif`, yang masing-masing blok `if`-nya memiliki penutup `endif` sendiri.
+    - Pada Slide Week 10 halaman 6 dan 9 (`program TAK`), percabangan bertingkat ditulis sebaris sebagai `else if <kondisi> then ...` yang hanya ditutup oleh **satu** `endif` di akhir rantai.
+    - Di `parser.py` (`parse_if_stmt`), jika token `ELSE` diikuti `IF` pada **baris yang sama** (`else_tok.line == next_tok.line`), parser menganggapnya sebagai cabang `else if` yang berbagi satu `endif` penutup. Jika `IF` berada di baris baru setelah `ELSE`, parser menganggapnya sebagai blok `else` biasa yang berisi `IfStmt` bersarang. Dengan aturan ini, kedua gaya penulisan di slide berjalan mulus.
+
+24. **Komentar Blok `{ ... }` dan Normalisasi Panah Slide PowerPoint:**
+    - Slide Week 09 halaman 6 (`{atau -1 * bilangan}`) dan Week 13–14 halaman 11 (`{asumsi pada baris ini pindah baris}`) menggunakan tanda kurung kurawal `{ ... }` sebagai komentar. `lexer.py` kini mendukung komentar `{ ... }` (satu baris maupun multi-baris) di samping `//`, dan melaporkan error sintaks bila kurung `{` tidak ditutup `}`.
+    - Karakter panah Unicode hasil salin-tempel dari PowerPoint (`←` / `\u2190` dan Wingdings `` / `\uf0df` pada Slide Week 11–12) dinormalisasi di `normalize_smart_quotes()` menjadi `<-`.
+
+25. **Aturan Kondisi Boolean pada `if`, `while`, dan `repeat-until`:**
+    - Sesuai Slide Week 09–12, ekspresi kondisi pada `if`, `else if`, `while`, dan `repeat-until` wajib bertipe `boolean` (diperiksa di `checker.py` sebelum program dijalankan; tidak ada *truthiness* implisit untuk `integer` atau `string`).
+    - Pada `repeat ... until <kondisi>`, badan perulangan selalu dijalankan minimal satu kali, dan perulangan **berhenti** saat `<kondisi>` bernilai `true`.
+
+26. **Opsi Batas Langkah Eksekusi (`max_steps`):**
+    - `Interpreter` dan `run_source()` menyediakan parameter opsional `max_steps: int | None = None` (default `None` pada CLI) untuk mencegah perulangan tak berujung (*infinite loop*) pada lingkungan non-interaktif atau web.
+
 
 
 

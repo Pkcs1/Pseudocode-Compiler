@@ -1,0 +1,10 @@
+program NilaiMutlak
+kamus
+    bilangan : integer
+algoritma
+    input(bilangan)
+    if bilangan < 0 then
+        bilangan = -bilangan {atau -1 * bilangan}
+    endif
+    output(bilangan)
+endprogram

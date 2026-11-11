@@ -1,0 +1,17 @@
+program TAK
+kamus
+    ikk : real
+algoritma
+    input(ikk)
+    if ikk < 2.00 then
+        output("Poor")
+    else if 2.00 <= ikk and ikk <= 2.75 then
+        output("Fair")
+    else if 2.76 <= ikk and ikk <= 3.00 then
+        output("Sastifactory")
+    else if 3.01 <= ikk and ikk <= 3.50 then
+        output("Very Good")
+    else
+        output("Excellent")
+    endif
+endprogram

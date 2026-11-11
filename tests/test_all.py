@@ -897,5 +897,287 @@ class TestMilestone5(unittest.TestCase):
         self.assertEqual(execute_program(code_nested_and_cipher).strip(), "60 B")
 
 
+class TestMilestone6Weeks9To15(unittest.TestCase):
+    def test_week09_if_then_else_and_curly_comments(self):
+        """Uji contoh & latihan Minggu 9: if-then, if-else, dan komentar { ... }."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        mutlak_code = (ex_dir / "nilai_mutlak.pseudo").read_text(encoding="utf-8")
+        self.assertEqual(execute_program(mutlak_code, "-6").strip(), "6")
+        self.assertEqual(execute_program(mutlak_code, "10").strip(), "10")
+
+        code_alphabet = """
+        program Alphabet
+        kamus
+            kar : char
+        algoritma
+            input(kar)
+            if 'a' <= kar and kar <= 'z' or 'A' <= kar and kar <= 'Z' then
+                output("Alphabet")
+            else
+                output("Bukan Alphabet")
+            endif
+        endprogram
+        """
+        self.assertEqual(execute_program(code_alphabet, "B").strip(), "Alphabet")
+        self.assertEqual(execute_program(code_alphabet, "e").strip(), "Alphabet")
+        self.assertEqual(execute_program(code_alphabet, "8").strip(), "Bukan Alphabet")
+
+        code_tiga_lima = """
+        program TigaLima
+        kamus
+            n : integer
+        algoritma
+            input(n)
+            if n mod 3 == 0 then
+                output("Kelipatan 3")
+            endif
+            if n mod 5 == 0 then
+                output("Kelipatan 5")
+            endif
+        endprogram
+        """
+        self.assertEqual(execute_program(code_tiga_lima, "15").strip().splitlines(), ["Kelipatan 3", "Kelipatan 5"])
+        self.assertEqual(execute_program(code_tiga_lima, "8").strip(), "")
+
+    def test_week10_else_if_and_nested_else(self):
+        """Uji contoh Minggu 10: rantai else if (1 endif) & nested if di dalam else (2 endif)."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        tak_code = (ex_dir / "tak.pseudo").read_text(encoding="utf-8")
+        self.assertEqual(execute_program(tak_code, "1.5").strip(), "Poor")
+        self.assertEqual(execute_program(tak_code, "2.5").strip(), "Fair")
+        self.assertEqual(execute_program(tak_code, "2.8").strip(), "Sastifactory")
+        self.assertEqual(execute_program(tak_code, "3.09").strip(), "Very Good")
+        self.assertEqual(execute_program(tak_code, "3.9").strip(), "Excellent")
+
+        # Gaya nested if di dalam else pada baris baru (Slide 5 & Tracing Slide 7)
+        code_nested = """
+        program TracingNested
+        kamus
+            val : integer
+        algoritma
+            input(val)
+            if val >= 0 then
+                output("Positive")
+                if val mod 2 == 0 then
+                    output("Even")
+                else
+                    output("Odd")
+                endif
+            else
+                if val == -1 then
+                    output("Minus One")
+                else
+                    output("Negative")
+                endif
+            endif
+        endprogram
+        """
+        self.assertEqual(execute_program(code_nested, "0").strip().splitlines(), ["Positive", "Even"])
+        self.assertEqual(execute_program(code_nested, "-1").strip().splitlines(), ["Minus One"])
+        self.assertEqual(execute_program(code_nested, "-11").strip().splitlines(), ["Negative"])
+
+    def test_week11_12_while_repeat_and_ppt_arrows(self):
+        """Uji contoh & latihan Minggu 11-12: while-do-endwhile, repeat-until, dan panah PPT."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        genap_code = (ex_dir / "genap_while.pseudo").read_text(encoding="utf-8")
+        self.assertEqual(execute_program(genap_code, "12 8 30 5").strip(), "50")
+        self.assertEqual(execute_program(genap_code, "1").strip(), "0")
+
+        # Uji karakter panah PPT (\uf0df dan \u2190) serta repeat-until (minimal 1x jalan)
+        barisan_ppt = """
+        program BarisanPPT
+        kamus
+            N, iterasi : integer
+        algoritma
+            input(N)
+            iterasi \uf0df 0
+            repeat
+                iterasi \u2190 iterasi + 1
+                output(iterasi)
+            until iterasi >= N
+        endprogram
+        """
+        self.assertEqual(execute_program(barisan_ppt, "4").strip().splitlines(), ["1", "2", "3", "4"])
+        # Walaupun N = 0, repeat-until tetap berjalan 1 kali (mencetak 1)
+        self.assertEqual(execute_program(barisan_ppt, "0").strip(), "1")
+
+        # Soal #1 Login (Week 11 & 12)
+        code_login = """
+        program Login
+        kamus
+            user, pwd : string
+            gagal : integer
+        algoritma
+            gagal <- 0
+            input(user, pwd)
+            while user != "admin" or pwd != "admin" do
+                gagal <- gagal + 1
+                input(user, pwd)
+            endwhile
+            output(gagal)
+            output("Login berhasil")
+        endprogram
+        """
+        self.assertEqual(
+            execute_program(code_login, "User 123\nuser user\nadmin 5678\nadmin admin\n").strip().splitlines(),
+            ["3", "Login berhasil"],
+        )
+
+    def test_week13_14_control_composition(self):
+        """Uji komposisi struktur kontrol Minggu 13-14: for+if, while+if, prima, tol, temperatur."""
+        ex_dir = ROOT_DIR / "tests" / "examples"
+        faktor_code = (ex_dir / "faktor.pseudo").read_text(encoding="utf-8")
+        self.assertEqual(execute_program(faktor_code, "24").strip().splitlines(), ["1", "2", "3", "4", "6", "8", "12", "24"])
+
+        # Contoh Soal #2 Digit genap (Week 13 & 14)
+        code_digit = """
+        program DigitGenap
+        kamus
+            num, d, counter : integer
+        algoritma
+            input(num)
+            counter = 0
+            while num > 0 do
+                d = num mod 10
+                if d mod 2 == 0 and d != 0 then
+                    counter = counter + 1
+                endif
+                num = num div 10
+            endwhile
+            output(counter)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_digit, "81347232").strip(), "4")
+        self.assertEqual(execute_program(code_digit, "1000000").strip(), "0")
+
+        # Soal #6 Gerbang Tol & Soal #7 Temperatur (Week 13 & 14)
+        code_tol = """
+        program GerbangTol
+        kamus
+            k : char
+            a, b, c : integer
+        algoritma
+            a <- 0
+            b <- 0
+            c <- 0
+            input(k)
+            while k == 'A' or k == 'B' or k == 'C' do
+                if k == 'A' then
+                    a <- a + 1
+                else if k == 'B' then
+                    b <- b + 1
+                else
+                    c <- c + 1
+                endif
+                input(k)
+            endwhile
+            output("Tipe A =", a)
+            output("Tipe B =", b)
+            output("Tipe C =", c)
+        endprogram
+        """
+        self.assertEqual(
+            execute_program(code_tol, "A A A C A B B A B C A A E").strip().splitlines(),
+            ["Tipe A = 7", "Tipe B = 3", "Tipe C = 2"],
+        )
+
+    def test_week15_latihan_problems(self):
+        """Uji latihan soal Minggu 15 (Service Mobil, AM-PM, Playground, Sport Club)."""
+        code_am_pm = """
+        program AmPm
+        kamus
+            jam : integer
+        algoritma
+            input(jam)
+            if jam == 0 then
+                output(12, "AM")
+            else if jam < 12 then
+                output(jam, "AM")
+            else if jam == 12 then
+                output(12, "PM")
+            else
+                output(jam - 12, "PM")
+            endif
+        endprogram
+        """
+        self.assertEqual(execute_program(code_am_pm, "0").strip(), "12 AM")
+        self.assertEqual(execute_program(code_am_pm, "12").strip(), "12 PM")
+        self.assertEqual(execute_program(code_am_pm, "13").strip(), "1 PM")
+
+        code_playground = """
+        program Playground
+        kamus
+            member : string
+            durasi : integer
+            tarif, diskon : real
+        algoritma
+            input(member, durasi)
+            if durasi <= 2 then
+                tarif <- durasi * 65000
+            else
+                tarif <- (2 * 65000) + ((durasi - 2) * 20000)
+            endif
+
+            if member == "Gold" then
+                diskon <- 0.5 * tarif
+            else if member == "Silver" then
+                diskon <- 0.25 * tarif
+            else
+                diskon <- 0
+            endif
+            output("IDR", tarif - diskon)
+        endprogram
+        """
+        self.assertEqual(execute_program(code_playground, "Gold 1").strip(), "IDR 32500")
+        self.assertEqual(execute_program(code_playground, "Silver 5").strip(), "IDR 142500")
+
+    def test_errors_and_max_steps_weeks9_to_15(self):
+        """Uji error sintaks, semantik (kondisi non-boolean), komentar tak ditutup, & batas max_steps."""
+        # 1. Lupa endif / endwhile / until / komentar '{' tak ditutup
+        syntax_cases = [
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n if x > 0 then\n output(x)\nendprogram",
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n while x > 0 do\n x = 0\nendprogram",
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n repeat\n x = 0\nendprogram",
+            "program T\nkamus\nalgoritma\n { komentar belum ditutup\nendprogram",
+        ]
+        for bad in syntax_cases:
+            with self.assertRaises(PseudoError) as ctx:
+                execute_program(bad)
+            self.assertEqual(ctx.exception.category, KATEGORI_SINTAKS)
+
+        # 2. Kondisi non-boolean pada if, else if, while, repeat-until
+        semantic_cases = [
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n if x then\n output(x)\n endif\nendprogram",
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n if x > 0 then\n output(x)\n else if x then\n output(x)\n endif\nendprogram",
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n while x do\n x = 0\n endwhile\nendprogram",
+            "program T\nkamus\n x : integer\nalgoritma\n x = 1\n repeat\n x = 0\n until \"stop\"\nendprogram",
+        ]
+        for bad in semantic_cases:
+            with self.assertRaises(PseudoError) as ctx:
+                execute_program(bad)
+            self.assertEqual(ctx.exception.category, KATEGORI_SEMAN)
+
+        # 3. Batas langkah eksekusi (max_steps) untuk mencegah infinite loop
+        infinite_code = """
+        program TakBerujung
+        kamus
+            x : integer
+        algoritma
+            x <- 1
+            while x > 0 do
+                x <- x + 1
+            endwhile
+        endprogram
+        """
+        with self.assertRaises(PseudoError) as ctx:
+            run_source(
+                infinite_code,
+                stdin=io.StringIO(""),
+                stdout=io.StringIO(),
+                max_steps=500,
+            )
+        self.assertEqual(ctx.exception.category, KATEGORI_RUNTIME)
+
+
 if __name__ == "__main__":
     unittest.main()

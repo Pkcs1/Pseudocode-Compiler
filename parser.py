@@ -26,16 +26,20 @@ from ast_nodes import (
     Expr,
     FieldAccessExpr,
     ForStmt,
+    IfBranch,
+    IfStmt,
     InputStmt,
     LenExpr,
     LiteralExpr,
     OutputStmt,
     Program,
+    RepeatStmt,
     Stmt,
     StructDecl,
     UnaryExpr,
     VarDecl,
     VarExpr,
+    WhileStmt,
 )
 from errors import syntax_error
 from lexer import Token
@@ -333,6 +337,13 @@ class Parser:
 
         return node
 
+    def _parse_block(self, stop_types: tuple[str, ...]) -> list[Stmt]:
+        """Membaca daftar statement hingga menemui salah satu token berhenti."""
+        stmts: list[Stmt] = []
+        while self.current().type not in stop_types:
+            stmts.append(self.parse_statement())
+        return stmts
+
     def parse_statement(self) -> Stmt:
         tok = self.current()
 
@@ -344,6 +355,15 @@ class Parser:
 
         if tok.type == "FOR":
             return self.parse_for_stmt()
+
+        if tok.type == "IF":
+            return self.parse_if_stmt()
+
+        if tok.type == "WHILE":
+            return self.parse_while_stmt()
+
+        if tok.type == "REPEAT":
+            return self.parse_repeat_stmt()
 
         if tok.type == "IDENTIFIER":
             return self.parse_assign_stmt()
@@ -421,9 +441,7 @@ class Parser:
             "diharapkan kata kunci 'do' sesudah nilai batas akhir (atau 'step') perulangan 'for'.",
         )
 
-        body: list[Stmt] = []
-        while self.current().type not in ("ENDFOR", "ENDPROGRAM", "EOF"):
-            body.append(self.parse_statement())
+        body = self._parse_block(("ENDFOR", "ENDPROGRAM", "EOF"))
 
         self.expect(
             "ENDFOR",
@@ -438,6 +456,112 @@ class Parser:
             col=for_tok.col,
             var_col=var_tok.col,
             step_expr=step_expr,
+        )
+
+    def parse_if_stmt(self) -> IfStmt:
+        """
+        Mendukung:
+            if <cond> then <stmts> endif
+            if <cond> then <stmts> else <stmts> endif
+            if <cond1> then <stmts> else if <cond2> then <stmts> ... [else <stmts>] endif
+            dan nested 'if' di dalam blok 'else' baris baru.
+        """
+        if_tok = self.expect("IF", "diharapkan 'if'.")
+        first_cond = self.parse_expr()
+        self.expect(
+            "THEN",
+            "diharapkan kata kunci 'then' sesudah kondisi 'if'.",
+        )
+        first_body = self._parse_block(("ELSE", "ENDIF", "ENDPROGRAM", "EOF"))
+        branches = [
+            IfBranch(
+                condition=first_cond,
+                body=first_body,
+                line=if_tok.line,
+                col=if_tok.col,
+            )
+        ]
+        else_body: list[Stmt] = []
+
+        while self.current().type == "ELSE":
+            else_tok = self.advance()
+            if self.current().type == "IF" and self.current().line == else_tok.line:
+                elif_tok = self.advance()
+                elif_cond = self.parse_expr()
+                self.expect(
+                    "THEN",
+                    "diharapkan kata kunci 'then' sesudah kondisi 'else if'.",
+                )
+                elif_body = self._parse_block(("ELSE", "ENDIF", "ENDPROGRAM", "EOF"))
+                branches.append(
+                    IfBranch(
+                        condition=elif_cond,
+                        body=elif_body,
+                        line=elif_tok.line,
+                        col=elif_tok.col,
+                    )
+                )
+            else:
+                else_body = self._parse_block(("ENDIF", "ENDPROGRAM", "EOF"))
+                break
+
+        self.expect(
+            "ENDIF",
+            "kata kunci 'endif' tidak ditemukan untuk menutup percabangan 'if'.",
+        )
+        return IfStmt(
+            branches=branches,
+            else_body=else_body,
+            line=if_tok.line,
+            col=if_tok.col,
+        )
+
+    def parse_while_stmt(self) -> WhileStmt:
+        """
+        Contoh:
+            while x > 0 do
+                ...
+            endwhile
+        """
+        while_tok = self.expect("WHILE", "diharapkan 'while'.")
+        condition = self.parse_expr()
+        self.expect(
+            "DO",
+            "diharapkan kata kunci 'do' sesudah kondisi perulangan 'while'.",
+        )
+        body = self._parse_block(("ENDWHILE", "ENDPROGRAM", "EOF"))
+        self.expect(
+            "ENDWHILE",
+            "kata kunci 'endwhile' tidak ditemukan untuk menutup perulangan 'while'.",
+        )
+        return WhileStmt(
+            condition=condition,
+            body=body,
+            line=while_tok.line,
+            col=while_tok.col,
+        )
+
+    def parse_repeat_stmt(self) -> RepeatStmt:
+        """
+        Contoh:
+            repeat
+                ...
+            until i == n
+        """
+        repeat_tok = self.expect("REPEAT", "diharapkan 'repeat'.")
+        body = self._parse_block(("UNTIL", "ENDPROGRAM", "EOF"))
+        until_tok = self.expect(
+            "UNTIL",
+            "kata kunci 'until' tidak ditemukan untuk menutup perulangan 'repeat'.",
+        )
+        condition = self.parse_expr()
+        return RepeatStmt(
+            body=body,
+            condition=condition,
+            line=repeat_tok.line,
+            col=repeat_tok.col,
+            until_line=until_tok.line,
+            until_col=until_tok.col,
         )
 
     # =================================================================

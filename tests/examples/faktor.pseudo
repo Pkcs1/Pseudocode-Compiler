@@ -1,0 +1,11 @@
+program Faktor
+kamus
+    x, j : integer
+algoritma
+    input(x)
+    for j = 1 to x do
+        if x mod j == 0 then
+            output(j)
+        endif
+    endfor
+endprogram

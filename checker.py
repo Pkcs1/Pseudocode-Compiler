@@ -21,16 +21,19 @@ from ast_nodes import (
     Expr,
     FieldAccessExpr,
     ForStmt,
+    IfStmt,
     InputStmt,
     LenExpr,
     LiteralExpr,
     OutputStmt,
     Program,
+    RepeatStmt,
     Stmt,
     StructDecl,
     UnaryExpr,
     VarDecl,
     VarExpr,
+    WhileStmt,
 )
 from errors import semantic_error
 
@@ -280,12 +283,32 @@ class SemanticChecker:
             self.check_output(stmt)
         elif isinstance(stmt, ForStmt):
             self.check_for(stmt)
+        elif isinstance(stmt, IfStmt):
+            self.check_if(stmt)
+        elif isinstance(stmt, WhileStmt):
+            self.check_while(stmt)
+        elif isinstance(stmt, RepeatStmt):
+            self.check_repeat(stmt)
         else:
             raise semantic_error(
                 "jenis instruksi belum didukung oleh pemeriksa tipe.",
                 stmt.line,
                 stmt.col,
                 self._line_text(stmt.line),
+            )
+
+    def _check_block(self, stmts: list[Stmt]) -> None:
+        for body_stmt in stmts:
+            self.check_statement(body_stmt)
+
+    def _check_boolean_condition(self, cond: Expr, label: str) -> None:
+        cond_type = self.check_expr(cond)
+        if cond_type != "boolean":
+            raise semantic_error(
+                f"kondisi pada {label} harus bertipe 'boolean', bukan '{cond_type}'.",
+                cond.line,
+                cond.col,
+                self._line_text(cond.line),
             )
 
     def check_assign(self, stmt: AssignStmt) -> None:
@@ -403,8 +426,25 @@ class SemanticChecker:
                     self._line_text(stmt.step_expr.line),
                 )
 
-        for body_stmt in stmt.body:
-            self.check_statement(body_stmt)
+        self._check_block(stmt.body)
+
+    def check_if(self, stmt: IfStmt) -> None:
+        """Memeriksa seluruh kondisi (boolean) dan blok statement pada percabangan if."""
+        for idx, branch in enumerate(stmt.branches):
+            label = "percabangan 'if'" if idx == 0 else "percabangan 'else if'"
+            self._check_boolean_condition(branch.condition, label)
+            self._check_block(branch.body)
+        self._check_block(stmt.else_body)
+
+    def check_while(self, stmt: WhileStmt) -> None:
+        """Memeriksa kondisi (boolean) dan badan perulangan while."""
+        self._check_boolean_condition(stmt.condition, "perulangan 'while'")
+        self._check_block(stmt.body)
+
+    def check_repeat(self, stmt: RepeatStmt) -> None:
+        """Memeriksa badan perulangan dan kondisi berhenti (boolean) pada repeat-until."""
+        self._check_block(stmt.body)
+        self._check_boolean_condition(stmt.condition, "perulangan 'repeat-until'")
 
     def _format_lvalue_name(self, expr: Expr) -> str:
         if isinstance(expr, VarExpr):
