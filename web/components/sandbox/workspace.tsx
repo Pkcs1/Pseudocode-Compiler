@@ -5,8 +5,6 @@ import {
   Play,
   Square,
   BookOpen,
-  Volume2,
-  VolumeX,
   Code,
   FolderCode,
 } from "lucide-react";
@@ -14,6 +12,7 @@ import { PseudocodeEditor } from "./pseudocode-editor";
 import { InteractiveTerminal, TerminalEntry } from "./interactive-terminal";
 import { SyntaxCheatsheetModal } from "./syntax-cheatsheet-modal";
 import { ThemeToggle } from "./theme-toggle";
+import { SoundVolumeControl } from "./sound-volume-control";
 import { ExampleProgram } from "@/app/api/examples/route";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
@@ -46,11 +45,25 @@ export function Workspace() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [inspectData, setInspectData] = useState<InspectResult | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundVolume, setSoundVolume] = useState<number>(() => {
+    if (typeof window === "undefined") return 0.7;
+    const saved = localStorage.getItem("pseudo-sound-volume");
+    return saved !== null ? Number(saved) : 0.7;
+  });
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { down: soundDown, up: soundUp } = useAudioSprite(soundEnabled);
+  const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
+    soundVolume > 0,
+    soundVolume
+  );
+
+  const handleVolumeChange = (vol: number) => {
+    setSoundVolume(vol);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pseudo-sound-volume", String(vol));
+    }
+  };
 
   // Fetch example list on mount
   useEffect(() => {
@@ -382,19 +395,12 @@ export function Workspace() {
             <span className="hidden sm:inline">Sintaks</span>
           </button>
 
-          {/* Sound Toggle */}
-          <button
-            type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title={soundEnabled ? "Nonaktifkan suara ketikan" : "Aktifkan suara ketikan"}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <VolumeX className="w-4 h-4 text-neutral-500" />
-            )}
-          </button>
+          {/* Sound Volume Control */}
+          <SoundVolumeControl
+            volume={soundVolume}
+            onVolumeChange={handleVolumeChange}
+            onPreviewClick={(v) => playClickPreview(v)}
+          />
 
           {/* Dark / Light Mode Toggle */}
           <ThemeToggle onToggleSound={() => soundDown("Enter")} />
