@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useMemo } from "react";
-import { Sparkles, Copy, Check, Code2 } from "lucide-react";
+import { Copy, Check, Code2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PseudocodeEditorProps {
@@ -116,16 +116,6 @@ export function PseudocodeEditor({
     updateCursorPosition();
   };
 
-  // Normalize PPT formatting (smart quotes, PPT arrow characters, irregular tabs)
-  const fixPptFormatting = () => {
-    const normalized = code
-      .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
-      .replace(/[\u2018\u2019]/g, "'")
-      .replace(/[\u2190\uF0DF]/g, "<-")
-      .replace(/\t/g, "    ");
-    onChange(normalized);
-  };
-
   const copyCode = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
@@ -157,16 +147,6 @@ export function PseudocodeEditor({
 
         {/* Toolbar actions */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fixPptFormatting}
-            title="Perbaiki tanda petik miring dan panah PPT otomatis"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-neutral-700/80 bg-neutral-800/70 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Rapikan PPT</span>
-          </button>
-
           <button
             type="button"
             onClick={copyCode}

@@ -6,14 +6,12 @@ import {
   Square,
   BookOpen,
   Code,
-  FolderCode,
 } from "lucide-react";
 import { PseudocodeEditor } from "./pseudocode-editor";
 import { InteractiveTerminal, TerminalEntry } from "./interactive-terminal";
 import { SyntaxCheatsheetModal } from "./syntax-cheatsheet-modal";
 import { ThemeToggle } from "./theme-toggle";
 import { SoundVolumeControl } from "./sound-volume-control";
-import { ExampleProgram } from "@/app/api/examples/route";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
 
@@ -37,8 +35,6 @@ endprogram`;
 
 export function Workspace() {
   const [code, setCode] = useState<string>(DEFAULT_CODE);
-  const [examples, setExamples] = useState<ExampleProgram[]>([]);
-  const [selectedExampleId, setSelectedExampleId] = useState<string>("nilai_mutlak");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
@@ -65,18 +61,8 @@ export function Workspace() {
     }
   };
 
-  // Fetch example list on mount
+  // Initial inspection on mount
   useEffect(() => {
-    fetch("/api/examples")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data.examples)) {
-          setExamples(data.examples);
-        }
-      })
-      .catch(() => {});
-
-    // Initial inspection
     fetch("/api/inspect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,33 +72,6 @@ export function Workspace() {
       .then((data) => setInspectData(data))
       .catch(() => {});
   }, []);
-
-  const handleSelectExample = (id: string) => {
-    soundDown("Enter");
-    const ex = examples.find((e) => e.id === id);
-    if (!ex) return;
-    setSelectedExampleId(id);
-    setCode(ex.code);
-    setErrorLine(null);
-
-    // Refresh inspect
-    fetch("/api/inspect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: ex.code }),
-    })
-      .then((res) => res.json())
-      .then((data) => setInspectData(data))
-      .catch(() => {});
-
-    setEntries([
-      {
-        id: crypto.randomUUID(),
-        type: "system",
-        text: `Memuat contoh: ${ex.title} (${ex.filename})`,
-      },
-    ]);
-  };
 
   const stopExecution = useCallback(() => {
     if (activeSessionId) {
@@ -162,7 +121,7 @@ export function Workspace() {
       },
     ]);
 
-    // Inspect in background for AST & Kamus tabs
+    // Inspect in background for Kamus tab
     fetch("/api/inspect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -317,48 +276,20 @@ export function Workspace() {
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 gap-4">
+    <div className="flex flex-col w-full max-w-7xl mx-auto gap-4">
       {/* Top Navigation & Action Bar */}
-      <header className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-neutral-800 bg-neutral-900/90 shadow-md backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/80">
+      <header className="flex flex-wrap items-center justify-between gap-4 px-5 py-3 rounded-2xl border border-neutral-800 bg-neutral-900/90 shadow-md backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/80">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
             <Code className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">
-                Pseudocode Alpro 1
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                Minggu 1–15
-              </span>
-            </div>
-            <p className="text-[11px] text-neutral-400 hidden sm:block">
-              Interactive Web Compiler & Execution Sandbox
-            </p>
-          </div>
+          <span className="font-bold text-base tracking-tight text-white">
+            Pseudocode Compiler
+          </span>
         </div>
 
-        {/* Center / Right controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Examples Selector */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-700/80 bg-neutral-800/80 text-xs">
-            <FolderCode className="w-3.5 h-3.5 text-neutral-400" />
-            <select
-              value={selectedExampleId}
-              onChange={(e) => handleSelectExample(e.target.value)}
-              className="bg-transparent text-neutral-200 outline-none text-xs font-medium cursor-pointer"
-            >
-              <optgroup label="Contoh Program Slide">
-                {examples.map((ex) => (
-                  <option key={ex.id} value={ex.id} className="bg-neutral-900 text-neutral-200">
-                    {ex.title}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5">
           {/* Run / Stop Button */}
           {isRunning ? (
             <button
@@ -392,7 +323,7 @@ export function Workspace() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Sintaks</span>
+            <span>Sintaks</span>
           </button>
 
           {/* Sound Volume Control */}

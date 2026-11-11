@@ -5,7 +5,6 @@ import {
   Terminal as TerminalIcon,
   Trash2,
   TableProperties,
-  Layers,
   AlertCircle,
   CheckCircle2,
   Loader2,
@@ -50,7 +49,7 @@ export function InteractiveTerminal({
   onKeyDownSound,
   onKeyUpSound,
 }: InteractiveTerminalProps) {
-  const [activeTab, setActiveTab] = useState<"console" | "kamus" | "ast">("console");
+  const [activeTab, setActiveTab] = useState<"console" | "kamus">("console");
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -126,20 +125,6 @@ export function InteractiveTerminal({
               <TableProperties className="w-3.5 h-3.5 text-sky-400" />
               <span>Kamus & Simbol</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("ast")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all cursor-pointer",
-                activeTab === "ast"
-                  ? "bg-neutral-800 text-white shadow-sm"
-                  : "text-neutral-400 hover:text-neutral-200"
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-purple-400" />
-              <span>Tokens & AST</span>
-            </button>
           </div>
         </div>
 
@@ -183,15 +168,13 @@ export function InteractiveTerminal({
             }}
             className="h-full overflow-y-auto p-4 space-y-2 select-text cursor-text"
           >
-            {/* Initial banner */}
-            <div className="pb-3 border-b border-neutral-800/60 text-neutral-500 space-y-1">
-              <div className="text-emerald-400 font-semibold text-xs tracking-wide">
-                Telkom University Alpro 1 Interactive Terminal Sandbox
+            {/* Blinking underscore when waiting to be run or initial state */}
+            {entries.length === 0 && !isRunning && !isWaitingInput && (
+              <div className="flex items-center gap-1.5 text-neutral-400 py-1 font-mono text-xs select-none">
+                <span className="text-emerald-400 font-bold">&gt;</span>
+                <span className="inline-block font-mono font-bold text-emerald-400 text-sm animate-pulse">_</span>
               </div>
-              <div className="text-[11px] text-neutral-400">
-                Ketik masukan langsung di baris terminal ketika program meminta input().
-              </div>
-            </div>
+            )}
 
             {/* Output entries stream */}
             {entries.map((entry) => {
@@ -280,19 +263,24 @@ export function InteractiveTerminal({
                 onSubmit={handleSubmitInput}
                 className="flex items-center gap-2 pt-1 pb-2 text-cyan-300"
               >
-                <span className="font-bold text-sm text-cyan-400 select-none animate-pulse">
+                <span className="font-bold text-sm text-cyan-400 select-none">
                   &gt;
                 </span>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleInputKeyDown}
-                  onKeyUp={(e) => onKeyUpSound?.(e.key)}
-                  placeholder="Ketik input lalu tekan Enter..."
-                  className="flex-1 bg-transparent border-none outline-none font-mono text-xs text-cyan-200 placeholder:text-neutral-600 focus:ring-0"
-                />
+                <div className="relative flex-1 flex items-center">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    onKeyUp={(e) => onKeyUpSound?.(e.key)}
+                    placeholder=""
+                    className="w-full bg-transparent border-none outline-none font-mono text-xs text-cyan-200 placeholder:text-neutral-600 focus:ring-0"
+                  />
+                  <span className="inline-block font-mono font-bold text-cyan-400 text-sm animate-pulse ml-0.5 select-none">
+                    _
+                  </span>
+                </div>
                 <button
                   type="submit"
                   title="Kirim masukan (Enter)"
@@ -302,6 +290,14 @@ export function InteractiveTerminal({
                   <CornerDownLeft className="w-3 h-3" />
                 </button>
               </form>
+            )}
+
+            {/* Blinking underscore when waiting for next run */}
+            {!isRunning && !isWaitingInput && entries.length > 0 && (
+              <div className="flex items-center gap-1.5 text-neutral-400 pt-1 font-mono text-xs select-none">
+                <span className="text-emerald-400 font-bold">&gt;</span>
+                <span className="inline-block font-mono font-bold text-emerald-400 text-sm animate-pulse">_</span>
+              </div>
             )}
           </div>
         )}
@@ -423,52 +419,6 @@ export function InteractiveTerminal({
                       ))}
                     </div>
                   )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: TOKENS & AST */}
-        {activeTab === "ast" && (
-          <div className="h-full overflow-y-auto p-4 space-y-4">
-            {!inspectData ? (
-              <div className="text-neutral-500 text-center py-8">
-                Data AST & Tokens belum tersedia.
-              </div>
-            ) : (
-              <>
-                {/* Tokens Stream */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-emerald-400 text-xs uppercase tracking-wider">
-                    Aliran Token Lexer ({inspectData.tokens?.length || 0})
-                  </h3>
-                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 rounded-lg bg-neutral-950/60 border border-neutral-800">
-                    {inspectData.tokens?.map((tok, i) => (
-                      <span
-                        key={i}
-                        title={`Line ${tok.line}, Col ${tok.col}`}
-                        className="px-1.5 py-0.5 rounded bg-neutral-800/80 border border-neutral-700/60 font-mono text-[11px] text-neutral-300"
-                      >
-                        <span className="text-emerald-400 font-bold">{tok.type}</span>
-                        {tok.value && tok.value !== tok.type && (
-                          <span className="text-neutral-400 ml-1">({tok.value})</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* AST Tree */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-purple-400 text-xs uppercase tracking-wider">
-                    Pohon Sintaks Abstrak (AST JSON)
-                  </h3>
-                  <pre className="p-3 rounded-lg bg-neutral-950/80 border border-neutral-800 font-mono text-xs text-purple-300/90 overflow-x-auto max-h-80 whitespace-pre">
-                    {inspectData.ast
-                      ? JSON.stringify(inspectData.ast, null, 2)
-                      : "Pohon AST kosong atau terjadi kesalahan sintaks"}
-                  </pre>
                 </div>
               </>
             )}
