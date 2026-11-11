@@ -13,6 +13,14 @@ interface PseudocodeEditorProps {
   onKeyUpSound?: (key: string) => void;
 }
 
+const RAINBOW_INDENTS = [
+  { border: "border-emerald-500/40", bg: "bg-emerald-500/[0.04]" },
+  { border: "border-sky-500/40", bg: "bg-sky-500/[0.04]" },
+  { border: "border-purple-500/40", bg: "bg-purple-500/[0.04]" },
+  { border: "border-amber-500/40", bg: "bg-amber-500/[0.04]" },
+  { border: "border-rose-500/40", bg: "bg-rose-500/[0.04]" },
+];
+
 export function PseudocodeEditor({
   code,
   onChange,
@@ -23,16 +31,21 @@ export function PseudocodeEditor({
 }: PseudocodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lineNumbersRef = useRef<HTMLDivElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
   const lines = useMemo(() => code.split("\n"), [code]);
   const lineCount = lines.length;
 
-  // Sync scroll between textarea and line numbers gutter
+  // Sync scroll between textarea, line numbers gutter, and rainbow backdrop
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+    if (backdropRef.current) {
+      backdropRef.current.scrollTop = e.currentTarget.scrollTop;
+      backdropRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
   };
 
@@ -49,7 +62,10 @@ export function PseudocodeEditor({
 
   // Handle Tab, Shift-Tab, Enter auto-indent, and Ctrl+Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    onKeyDownSound?.(e.key);
+    // Only play typing sound once per key press (prevent repeated playback when holding key)
+    if (!e.repeat) {
+      onKeyDownSound?.(e.key);
+    }
 
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
@@ -123,7 +139,7 @@ export function PseudocodeEditor({
   };
 
   return (
-    <div className="flex flex-col h-full rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden transition-colors dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="flex flex-col h-full min-h-0 rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden transition-colors dark:border-neutral-800 dark:bg-neutral-950">
       {/* Window title bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/80 bg-neutral-900/90 select-none">
         <div className="flex items-center gap-2">
@@ -169,7 +185,7 @@ export function PseudocodeEditor({
       </div>
 
       {/* Code Editor body */}
-      <div className="relative flex-1 flex overflow-hidden font-mono text-sm">
+      <div className="relative flex-1 min-h-0 flex overflow-hidden font-mono text-sm">
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}
@@ -197,24 +213,58 @@ export function PseudocodeEditor({
           })}
         </div>
 
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={code}
-          onChange={(e) => {
-            onChange(e.target.value);
-            updateCursorPosition();
-          }}
-          onKeyDown={handleKeyDown}
-          onKeyUp={handleKeyUp}
-          onClick={updateCursorPosition}
-          onScroll={handleScroll}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          placeholder="Tulis kode pseudocode di sini..."
-          className="flex-1 resize-none py-3 px-4 bg-transparent outline-none border-none text-zinc-100 placeholder:text-neutral-600 font-mono text-sm leading-6 selection:bg-emerald-500/30 overflow-y-auto whitespace-pre"
-        />
+        {/* Editor Area: Rainbow Indents Layer + Transparent Textarea */}
+        <div className="relative flex-1 min-h-0 h-full overflow-hidden">
+          {/* Rainbow Indent Guides Backdrop */}
+          <div
+            ref={backdropRef}
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none py-3 px-4 font-mono text-sm leading-6 overflow-hidden select-none whitespace-pre"
+          >
+            {lines.map((line, idx) => {
+              const match = line.match(/^ */);
+              const spaceCount = match ? match[0].length : 0;
+              const indentCount = Math.floor(spaceCount / 4);
+              return (
+                <div key={idx} className="h-6 flex">
+                  {Array.from({ length: indentCount }).map((_, level) => {
+                    const color = RAINBOW_INDENTS[level % RAINBOW_INDENTS.length];
+                    return (
+                      <span
+                        key={level}
+                        className={cn(
+                          "inline-block h-6 border-l transition-colors",
+                          color.border,
+                          color.bg
+                        )}
+                        style={{ width: "4ch" }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={code}
+            onChange={(e) => {
+              onChange(e.target.value);
+              updateCursorPosition();
+            }}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
+            onClick={updateCursorPosition}
+            onScroll={handleScroll}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            placeholder="Tulis kode pseudocode di sini..."
+            className="relative z-10 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-zinc-100 placeholder:text-neutral-600 font-mono text-sm leading-6 selection:bg-emerald-500/30 overflow-y-auto whitespace-pre"
+          />
+        </div>
       </div>
 
       {/* Editor footer */}

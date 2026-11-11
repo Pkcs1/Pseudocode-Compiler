@@ -15,26 +15,8 @@ import { SoundVolumeControl } from "./sound-volume-control";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
 
-const DEFAULT_CODE = `program Nilai_Mutlak
-kamus
-    x : integer
-    hasil : integer
-algoritma
-    output("=== Program Hitung Nilai Mutlak ===")
-    output("Masukkan sebuah bilangan bulat:")
-    input(x)
-
-    if x < 0 then
-        hasil <- -x
-    else
-        hasil <- x
-    endif
-
-    output("Nilai mutlak dari", x, "adalah", hasil)
-endprogram`;
-
 export function Workspace() {
-  const [code, setCode] = useState<string>(DEFAULT_CODE);
+  const [code, setCode] = useState<string>("");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
@@ -61,17 +43,18 @@ export function Workspace() {
     }
   };
 
-  // Initial inspection on mount
+  // Initial inspection on mount (if code is present)
   useEffect(() => {
+    if (!code.trim()) return;
     fetch("/api/inspect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: DEFAULT_CODE }),
+      body: JSON.stringify({ source: code }),
     })
       .then((res) => res.json())
       .then((data) => setInspectData(data))
       .catch(() => {});
-  }, []);
+  }, [code]);
 
   const stopExecution = useCallback(() => {
     if (activeSessionId) {
@@ -339,7 +322,7 @@ export function Workspace() {
       </header>
 
       {/* Main Dual-Terminal Split */}
-      <main className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[580px]">
+      <main className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px] max-h-[75vh] w-full min-h-0">
         {/* Left: Pseudocode Editor Terminal */}
         <PseudocodeEditor
           code={code}

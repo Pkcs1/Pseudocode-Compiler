@@ -77,6 +77,7 @@ export function InteractiveTerminal({
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.repeat) return;
     onKeyDownSound?.(e.key);
     if (e.key === "Enter") {
       e.preventDefault();
@@ -85,7 +86,7 @@ export function InteractiveTerminal({
   };
 
   return (
-    <div className="flex flex-col h-full rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden transition-colors dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="flex flex-col h-full min-h-0 rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden transition-colors dark:border-neutral-800 dark:bg-neutral-950">
       {/* Terminal Title Bar & Tabs */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800/80 bg-neutral-900/90 select-none">
         <div className="flex items-center gap-3">
@@ -156,7 +157,7 @@ export function InteractiveTerminal({
       </div>
 
       {/* Main Tab Content */}
-      <div className="relative flex-1 overflow-hidden font-mono text-xs">
+      <div className="relative flex-1 min-h-0 overflow-hidden font-mono text-xs">
         {/* TAB 1: CONSOLE */}
         {activeTab === "console" && (
           <div
@@ -166,7 +167,7 @@ export function InteractiveTerminal({
                 inputRef.current.focus();
               }
             }}
-            className="h-full overflow-y-auto p-4 space-y-2 select-text cursor-text"
+            className="h-full min-h-0 overflow-y-auto p-4 space-y-2 select-text cursor-text"
           >
             {/* Blinking underscore when waiting to be run or initial state */}
             {entries.length === 0 && !isRunning && !isWaitingInput && (
@@ -304,7 +305,7 @@ export function InteractiveTerminal({
 
         {/* TAB 2: KAMUS & SIMBOL */}
         {activeTab === "kamus" && (
-          <div className="h-full overflow-y-auto p-4 space-y-4">
+          <div className="h-full min-h-0 overflow-y-auto p-4 space-y-4">
             {!inspectData ? (
               <div className="text-neutral-500 text-center py-8">
                 Klik &quot;Jalankan&quot; atau tunggu parsing kode untuk melihat tabel kamus.

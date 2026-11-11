@@ -39,6 +39,7 @@ export function useAudioSprite(enabled: boolean, volume: number = 0.7) {
   const bufferRef = useRef<AudioBuffer | null>(null);
   const readyRef = useRef(false);
   const strokeCounterRef = useRef(0);
+  const activeKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     readyRef.current = false;
@@ -48,11 +49,18 @@ export function useAudioSprite(enabled: boolean, volume: number = 0.7) {
     let context: AudioContext | null = null;
     let started = false;
 
+    const activeKeys = activeKeysRef.current;
+
     const removeListeners = () => {
       window.removeEventListener("click", initAudio);
       window.removeEventListener("keydown", initAudio);
       window.removeEventListener("touchstart", initAudio);
     };
+
+    const handleWindowBlur = () => {
+      activeKeys.clear();
+    };
+    window.addEventListener("blur", handleWindowBlur);
 
     async function initAudio() {
       if (started) return;
@@ -89,6 +97,8 @@ export function useAudioSprite(enabled: boolean, volume: number = 0.7) {
 
     return () => {
       removeListeners();
+      window.removeEventListener("blur", handleWindowBlur);
+      activeKeys.clear();
       controller.abort();
       readyRef.current = false;
       bufferRef.current = null;
@@ -136,6 +146,12 @@ export function useAudioSprite(enabled: boolean, volume: number = 0.7) {
   const down = (key: string) => {
     if (!enabled || volume <= 0) return;
 
+    // Only play sound once per key press (prevent repeated playback when holding down a key)
+    if (activeKeysRef.current.has(key)) {
+      return;
+    }
+    activeKeysRef.current.add(key);
+
     if (key === "Enter") {
       playSound(ENTER_DOWN, 1.0, false);
       return;
@@ -156,6 +172,7 @@ export function useAudioSprite(enabled: boolean, volume: number = 0.7) {
   };
 
   const up = (key: string) => {
+    activeKeysRef.current.delete(key);
     if (!enabled || volume <= 0) return;
 
     if (key === "Enter") {
