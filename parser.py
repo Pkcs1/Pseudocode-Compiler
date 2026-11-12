@@ -415,6 +415,9 @@ class Parser:
             for i <- init to end step k do
                 <statements>
             endfor
+            for i <- init downto end [step k] do
+                <statements>
+            endfor
         """
         for_tok = self.expect("FOR", "diharapkan 'for'.")
         var_tok = self.expect(
@@ -426,10 +429,14 @@ class Parser:
             f"diharapkan tanda '=' atau '<-' sesudah variabel '{var_tok.value}' pada perulangan 'for'.",
         )
         start_expr = self.parse_expr()
-        self.expect(
-            "TO",
-            "diharapkan kata kunci 'to' sesudah nilai awal perulangan 'for'.",
-        )
+        descending = False
+        if self.match("DOWNTO"):
+            descending = True
+        else:
+            self.expect(
+                "TO",
+                "diharapkan kata kunci 'to' atau 'downto' sesudah nilai awal perulangan 'for'.",
+            )
         end_expr = self.parse_expr()
 
         step_expr: Expr | None = None
@@ -456,6 +463,7 @@ class Parser:
             col=for_tok.col,
             var_col=var_tok.col,
             step_expr=step_expr,
+            descending=descending,
         )
 
     def parse_if_stmt(self) -> IfStmt:

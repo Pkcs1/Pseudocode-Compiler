@@ -442,6 +442,19 @@ export class Interpreter {
       }
     }
 
+    // 'downto' counts down: default -1, and 'step k' means "subtract k" (k > 0).
+    if (stmt.descending) {
+      if (step < 0n) {
+        throw runtimeError(
+          "nilai langkah (step) pada perulangan 'for ... downto' harus positif (step menyatakan besar pengurangan setiap putaran).",
+          stmt.stepExpr!.line,
+          stmt.stepExpr!.col,
+          this._lineText(stmt.stepExpr!.line)
+        );
+      }
+      step = -step;
+    }
+
     this.env.set(stmt.varName, curr);
     if (step > 0n) {
       while (curr <= limit) {

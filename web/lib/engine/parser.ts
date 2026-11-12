@@ -23,7 +23,7 @@ import {
   WhileStmt,
 } from "./ast";
 import { PseudoError, syntaxError } from "./errors";
-import { Token } from "./lexer";
+import { KEYWORDS, Token } from "./lexer";
 
 /**
  * Placeholder type name used for AST pieces the parser could not read
@@ -87,10 +87,36 @@ export class Parser {
   errors: PseudoError[];
 
   constructor(tokens: Token[], sourceLines: string[]) {
-    this.tokens = tokens;
     this.sourceLines = sourceLines;
     this.pos = 0;
     this.errors = [];
+    this.tokens = tokens.map((tok) => this._fixKeywordCase(tok));
+  }
+
+  /**
+   * Keywords must be lowercase. A beginner writing `Program`, `If` or `ENDIF`
+   * gets one clear error, and the token is read as the intended keyword so the
+   * rest of the program still parses normally (no follow-on errors).
+   */
+  _fixKeywordCase(tok: Token): Token {
+    if (tok.type !== "IDENTIFIER") return tok;
+    const word = String(tok.value);
+    const lower = word.toLowerCase();
+    const kwType = KEYWORDS[lower];
+    if (!kwType || lower === word) return tok;
+    this.report(
+      syntaxError(
+        `kata kunci harus ditulis dengan huruf kecil: gunakan '${lower}', bukan '${word}'.`,
+        tok.line,
+        tok.col,
+        this._lineText(tok.line)
+      )
+    );
+    return {
+      ...tok,
+      type: kwType,
+      value: kwType === "BOOL_LIT" ? lower === "true" : lower,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -607,6 +633,7 @@ export class Parser {
     let startExpr: Expr = recoveredExpr(forTok);
     let endExpr: Expr = recoveredExpr(forTok);
     let stepExpr: Expr | null = null;
+    let descending = false;
     try {
       varTok = this.expect(
         "IDENTIFIER",
@@ -617,10 +644,32 @@ export class Parser {
         `diharapkan tanda '=' atau '<-' sesudah variabel '${varTok.value}' pada perulangan 'for'.`
       );
       startExpr = this.parseExpr();
-      this.expect(
-        "TO",
-        "diharapkan kata kunci 'to' sesudah nilai awal perulangan 'for'."
-      );
+      const next = this.tokens[this.pos + 1];
+      if (this.match("DOWNTO")) {
+        descending = true;
+      } else if (
+        this.current().type === "IDENTIFIER" &&
+        String(this.current().value).toLowerCase() === "down" &&
+        next?.type === "TO"
+      ) {
+        // Common beginner spelling "down to": explain, then read it as downto.
+        const downTok = this.advance();
+        this.advance();
+        this.report(
+          syntaxError(
+            "tulis 'downto' sebagai satu kata (tanpa spasi), bukan 'down to'.",
+            downTok.line,
+            downTok.col,
+            this._lineText(downTok.line)
+          )
+        );
+        descending = true;
+      } else {
+        this.expect(
+          "TO",
+          "diharapkan kata kunci 'to' atau 'downto' sesudah nilai awal perulangan 'for'."
+        );
+      }
       endExpr = this.parseExpr();
       if (this.match("STEP")) {
         stepExpr = this.parseExpr();
@@ -651,6 +700,7 @@ export class Parser {
       col: forTok.col,
       varCol: varTok.col,
       stepExpr,
+      descending,
     };
   }
 

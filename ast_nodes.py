@@ -219,12 +219,15 @@ class OutputStmt(Stmt):
 @dataclass
 class ForStmt(Stmt):
     """
-    Mewakili instruksi perulangan for-to-[step]-do-endfor.
+    Mewakili instruksi perulangan for-to/downto-[step]-do-endfor.
     Contoh:
         for j = 1 to n do
             ...
         endfor
         for i <- a to b step k do
+            ...
+        endfor
+        for i <- 9 downto 1 do      { menghitung mundur }
             ...
         endfor
     """
@@ -236,6 +239,8 @@ class ForStmt(Stmt):
     col: int
     var_col: int = 1
     step_expr: Expr | None = None
+    # True untuk 'downto' (menghitung mundur); step berarti besar pengurangan.
+    descending: bool = False
 
 
 @dataclass

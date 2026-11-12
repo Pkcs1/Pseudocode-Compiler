@@ -85,6 +85,13 @@ Dokumen ini mencatat semua keputusan semantik dan aturan perilaku yang diterapka
     - Jika `step` bernilai `0` saat dijalankan, interpreter menghentikan eksekusi dengan error runtime karena perulangan tidak akan pernah berhenti.
     - Variabel pencacah `i` serta ekspresi `init`, `end`, dan `step` wajib bertipe `integer` (atau alias yang mengarah ke `integer`).
 
+20a. **Perulangan Mundur `for i = init downto end [step k] do ... endfor`:**
+    - `downto` adalah pasangan dari `to` untuk menghitung **mundur**: `for i <- 9 downto 1 do` menghasilkan `9, 8, ..., 1` (nilai akhir ikut dihitung).
+    - Tanpa `step`, langkahnya `-1`. Dengan `step k`, `k` menyatakan **besar pengurangan** setiap putaran dan wajib positif (`for i <- 10 downto 0 step 2` menghasilkan `10, 8, ..., 0`). Dengan begitu pemula tidak perlu menulis bilangan negatif.
+    - `step` negatif pada `downto` adalah error runtime (dan editor web memberi peringatan lebih awal bila nilainya berupa angka tetap); `step 0` tetap error runtime seperti pada `to`.
+    - Jika `init < end`, badan perulangan dijalankan `0` kali (sama seperti `to` dengan `init > end`). Editor web memberi peringatan bila batasnya berupa angka tetap, misalnya `for i <- 9 to 1` disarankan diganti `downto`.
+    - Bentuk `to ... step -k` tetap didukung agar kode lama tidak rusak.
+
 ## Milestone 5: Fleksibilitas Ekspresi & Solusi Latihan Soal Slide
 
 20. **Disambiguasi `x<-5` di Dalam Ekspresi (`x < -5` vs `x <- 5`):**

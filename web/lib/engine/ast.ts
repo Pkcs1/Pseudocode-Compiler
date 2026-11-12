@@ -133,6 +133,8 @@ export interface ForStmt extends NodeBase {
   body: Stmt[];
   varCol: number;
   stepExpr?: Expr | null;
+  /** true for `downto` (count down); then `step k` is the amount subtracted. */
+  descending?: boolean;
 }
 
 export interface IfBranch {

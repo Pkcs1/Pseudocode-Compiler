@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect, useCallback } from "react";
 import {
   Copy,
   Check,
   Play,
   Square,
-  FileCode,
-  ChevronDown,
   CircleX,
   TriangleAlert,
 } from "lucide-react";
@@ -62,7 +60,6 @@ interface PseudocodeEditorProps {
   jumpTo?: JumpRequest | null;
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
-  onLoadExample?: (name: string) => void;
   lastExecutionMs?: number | null;
 }
 
@@ -85,7 +82,6 @@ export function PseudocodeEditor({
   jumpTo,
   onKeyDownSound,
   onKeyUpSound,
-  onLoadExample,
   lastExecutionMs,
 }: PseudocodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -93,7 +89,6 @@ export function PseudocodeEditor({
   const backdropRef = useRef<HTMLPreElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const [isExampleMenuOpen, setIsExampleMenuOpen] = useState(false);
 
   const lines = useMemo(() => code.split("\n"), [code]);
   const lineCount = lines.length;
@@ -146,16 +141,39 @@ export function PseudocodeEditor({
     }
   };
 
-  const updateCursorPosition = () => {
-    if (!textareaRef.current) return;
-    const pos = textareaRef.current.selectionStart;
-    const textBefore = code.substring(0, pos);
-    const curLines = textBefore.split("\n");
-    setCursorPos({
-      line: curLines.length,
-      col: curLines[curLines.length - 1].length + 1,
-    });
-  };
+  // Read the caret from the textarea itself (its live value, not the `code`
+  // prop, which still holds the previous text during onChange/keydown).
+  const updateCursorPosition = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    // The caret is the end of the selection the user is moving.
+    const pos =
+      textarea.selectionDirection === "backward"
+        ? textarea.selectionStart
+        : textarea.selectionEnd;
+    const textBefore = textarea.value.substring(0, pos);
+    const lastNewline = textBefore.lastIndexOf("\n");
+    let line = 1;
+    for (let i = 0; i < textBefore.length; i++) if (textBefore[i] === "\n") line++;
+    const col = pos - lastNewline;
+    setCursorPos((prev) => (prev.line === line && prev.col === col ? prev : { line, col }));
+  }, []);
+
+  // Follow every caret move: arrow keys (incl. held keys), mouse clicks and
+  // drags, and programmatic moves like auto-indent or jump-to-line.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const onSelectionChange = () => {
+      if (document.activeElement === textarea) updateCursorPosition();
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    textarea.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", onSelectionChange);
+      textarea.removeEventListener("selectionchange", onSelectionChange);
+    };
+  }, [updateCursorPosition]);
 
   // Keyboard navigation & auto-indent
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -200,6 +218,7 @@ export function PseudocodeEditor({
           setTimeout(() => {
             textarea.selectionStart = Math.max(lineStart, start - 4);
             textarea.selectionEnd = Math.max(lineStart, end - 4);
+            updateCursorPosition();
           }, 0);
         }
       } else {
@@ -209,6 +228,7 @@ export function PseudocodeEditor({
         onChange(nextCode);
         setTimeout(() => {
           textarea.selectionStart = textarea.selectionEnd = start + 4;
+          updateCursorPosition();
         }, 0);
       }
       return;
@@ -228,6 +248,7 @@ export function PseudocodeEditor({
         setTimeout(() => {
           textarea.selectionStart = textarea.selectionEnd =
             start + 1 + indent.length;
+          updateCursorPosition();
         }, 0);
       }
     }
@@ -243,15 +264,6 @@ export function PseudocodeEditor({
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
-
-  // Close example menu if clicked outside
-  useEffect(() => {
-    const handleGlobalClick = () => setIsExampleMenuOpen(false);
-    if (isExampleMenuOpen) {
-      window.addEventListener("click", handleGlobalClick);
-      return () => window.removeEventListener("click", handleGlobalClick);
-    }
-  }, [isExampleMenuOpen]);
 
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
@@ -305,73 +317,6 @@ export function PseudocodeEditor({
                 </span>
               )}
             </button>
-          )}
-
-          {/* Example Loader Dropdown (Lavender action pill) */}
-          {onLoadExample && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExampleMenuOpen(!isExampleMenuOpen);
-                }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#ddd6fe] bg-[#ede9fe] text-[#4f46e5] hover:bg-[#ddd6fe] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
-              >
-                <FileCode className="w-3 h-3 text-[#5b45ff] dark:text-sky-400" />
-                <span>Contoh</span>
-                <ChevronDown className="w-3 h-3 opacity-70" />
-              </button>
-
-              {isExampleMenuOpen && (
-                <div className="absolute right-0 mt-1 w-48 rounded-xl border border-[#e2e2dc] bg-[#ffffff] text-[#0f172a] shadow-xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 z-30 py-1 font-mono text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onLoadExample("warung");
-                      setIsExampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
-                  >
-                    <span>1. Warung Diskon</span>
-                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">I/O</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onLoadExample("rata");
-                      setIsExampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
-                  >
-                    <span>2. Rata-Rata</span>
-                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">For Loop</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onLoadExample("tes");
-                      setIsExampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
-                  >
-                    <span>3. Percabangan</span>
-                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">If-Else</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onLoadExample("titik");
-                      setIsExampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
-                  >
-                    <span>4. Tipe Bentukan</span>
-                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">Struct</span>
-                  </button>
-                </div>
-              )}
-            </div>
           )}
 
           {/* Copy Button */}
@@ -567,7 +512,7 @@ export function PseudocodeEditor({
             autoCorrect="off"
             style={{ tabSize: 4 }}
             placeholder="Tulis kode pseudocode di sini (atau muat contoh)..."
-            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 selection:bg-[#ede9fe] selection:text-[#1e1b4b] dark:selection:bg-sky-500/25 dark:selection:text-white overflow-auto whitespace-pre m-0"
+            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 code-input overflow-auto whitespace-pre m-0"
           />
         </div>
       </div>

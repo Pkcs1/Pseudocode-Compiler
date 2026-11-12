@@ -4,12 +4,12 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import {
   Play,
   Square,
-  BookOpen,
   Code2,
+  FileText,
 } from "lucide-react";
+import Link from "next/link";
 import { PseudocodeEditor, JumpRequest } from "./pseudocode-editor";
 import { ResultsPane, TerminalEntry } from "./results-pane";
-import { SyntaxCheatsheetModal } from "./syntax-cheatsheet-modal";
 import { TestCasesPanel } from "./test-cases-panel";
 import { runTestCase, TestCase, TestResult } from "@/lib/test-runner";
 import { cn } from "@/lib/utils";
@@ -101,58 +101,6 @@ function ResizeHandle({
   );
 }
 
-const EXAMPLES: Record<string, string> = {
-  warung: `program Warung
-kamus
-    harga, jumlah, diskon : integer
-    persen, totalAwal, potongan, total : real
-algoritma
-    input(harga, jumlah, diskon)
-    persen = diskon / 100
-    totalAwal = harga * jumlah
-    potongan = totalAwal * persen
-    total = totalAwal - potongan
-    output(total, total >= 50000)
-endprogram`,
-  rata: `program RataRata
-kamus
-    i, n, x, tot : integer
-    rata : real
-algoritma
-    input(n)
-    tot <- 0
-    for i <- 1 to n do
-        input(x)
-        tot <- tot + x
-    endfor
-    rata <- tot / n
-    output(rata, rata >= 70)
-endprogram`,
-  tes: `program CekNilai
-kamus
-    x : integer
-algoritma
-    input(x)
-    if x > 10 then
-        output("X lebih besar dari 10")
-    else
-        output("X kurang dari atau sama dengan 10")
-    endif
-endprogram`,
-  titik: `program JarakTitik
-kamus
-    type Titik : < x : real, y : real >
-    p1, p2 : Titik
-    dx, dy : real
-algoritma
-    input(p1.x, p1.y)
-    input(p2.x, p2.y)
-    dx <- p2.x - p1.x
-    dy <- p2.y - p1.y
-    output("Selisih koordinat:", dx, dy)
-endprogram`,
-};
-
 export function Workspace() {
   const [code, setCode] = useState<string>("");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
@@ -183,7 +131,6 @@ export function Workspace() {
     const saved = localStorage.getItem("pseudo-sound-volume");
     return saved !== null ? Number(saved) : 0.7;
   });
-  const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
 
   const runnerHandleRef = useRef<ExecutionHandle | null>(null);
   const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
@@ -411,14 +358,6 @@ export function Workspace() {
     }
   };
 
-  const handleLoadExample = (name: string) => {
-    if (EXAMPLES[name]) {
-      setCode(EXAMPLES[name]);
-      setVariableSnapshot(null);
-      soundDown("Enter");
-    }
-  };
-
   return (
     <div className="flex flex-col w-full min-h-dvh lg:h-dvh gap-2 p-2 select-text">
       {/* Top Navigation & App Header */}
@@ -462,19 +401,15 @@ export function Workspace() {
             </button>
           )}
 
-          {/* Cheatsheet Button */}
-          <button
-            type="button"
-            onClick={() => {
-              soundDown("Enter");
-              setIsCheatsheetOpen(true);
-            }}
-            title="Buka panduan sintaks pseudocode"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all cursor-pointer"
+          {/* Documentation page */}
+          <Link
+            href="/docs"
+            title="Buka dokumentasi bahasa pseudocode"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all"
           >
-            <BookOpen className="w-3.5 h-3.5 text-[#5b45ff] dark:text-amber-400" />
-            <span className="hidden sm:inline">Panduan</span>
-          </button>
+            <FileText className="w-3.5 h-3.5 text-[#5b45ff] dark:text-sky-400" />
+            <span className="hidden sm:inline">Dokumentasi</span>
+          </Link>
 
           {/* Sound Volume Control */}
           <SoundVolumeControl
@@ -507,7 +442,6 @@ export function Workspace() {
             jumpTo={jumpTo}
             onKeyDownSound={soundDown}
             onKeyUpSound={soundUp}
-            onLoadExample={handleLoadExample}
             lastExecutionMs={lastExecutionMs}
           />
         </section>
@@ -563,12 +497,6 @@ export function Workspace() {
         </div>
       </div>
 
-      {/* Cheatsheet Modal */}
-      <SyntaxCheatsheetModal
-        isOpen={isCheatsheetOpen}
-        onClose={() => setIsCheatsheetOpen(false)}
-        onInsertCode={(snippet) => setCode(snippet)}
-      />
     </div>
   );
 }

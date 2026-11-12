@@ -82,8 +82,8 @@ Deklarasi di dalam `kamus` dapat ditulis dalam urutan apa saja:
    ```
 4. **Komentar:**
    Mendukung komentar satu baris `// ...` serta komentar blok gaya slide kuliah `{ ... }` (dapat satu baris maupun multi-baris).
-5. **Perulangan `for` (`for ... to ... [step ...] do ... endfor`):**
-   Mencacah dari `init` sampai `end` (inklusif) dengan kenaikan default `+1`, atau sesuai nilai opsional `step k` (mendukung step positif untuk menghitung naik maupun step negatif untuk menghitung mundur). `init`, `end`, dan `step` dievaluasi satu kali di awal:
+5. **Perulangan `for` (`for ... to|downto ... [step ...] do ... endfor`):**
+   Dengan `to`, mencacah dari `init` sampai `end` (inklusif) dengan kenaikan default `+1`, atau sesuai nilai opsional `step k` (mendukung step positif untuk menghitung naik maupun step negatif untuk menghitung mundur). Dengan `downto`, mencacah **mundur** dari `init` sampai `end` (inklusif) dengan pengurangan default `1`; `step k` pada `downto` menyatakan **besar pengurangan** dan wajib positif. `init`, `end`, dan `step` dievaluasi satu kali di awal:
    ```text
    for j = 1 to n do
        input(x)
@@ -92,6 +92,14 @@ Deklarasi di dalam `kamus` dapat ditulis dalam urutan apa saja:
    endfor
 
    for i <- a to b step k do
+       output(i)
+   endfor
+
+   for i <- 9 downto 1 do          { 9, 8, 7, ..., 1 }
+       output(i)
+   endfor
+
+   for i <- 10 downto 0 step 2 do  { 10, 8, 6, 4, 2, 0 }
        output(i)
    endfor
    ```
@@ -162,7 +170,7 @@ statement      = assign_stmt | input_stmt | output_stmt | for_stmt | if_stmt | w
 assign_stmt    = lvalue ( "=" | "<-" ) expr ;
 input_stmt     = "input" "(" lvalue { "," lvalue } ")" ;
 output_stmt    = "output" "(" expr { "," expr } ")" ;
-for_stmt       = "for" IDENTIFIER ( "=" | "<-" ) expr "to" expr [ "step" expr ] "do" { statement } "endfor" ;
+for_stmt       = "for" IDENTIFIER ( "=" | "<-" ) expr ( "to" | "downto" ) expr [ "step" expr ] "do" { statement } "endfor" ;
 if_stmt        = "if" expr "then" { statement } { "else" "if" expr "then" { statement } } [ "else" { statement } ] "endif" ;
 while_stmt     = "while" expr "do" { statement } "endwhile" ;
 repeat_stmt    = "repeat" { statement } "until" expr ;
