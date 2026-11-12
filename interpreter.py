@@ -394,6 +394,8 @@ class Interpreter:
         - Jika step == 0, laporkan kesalahan runtime (karena perulangan tidak akan pernah berhenti).
         - Jika step > 0, berjalan selama i <= end (jika init > end, jalan 0 kali).
         - Jika step < 0, berjalan selama i >= end (jika init < end, jalan 0 kali).
+        - Pada 'downto', perulangan menghitung mundur: default langkah -1, dan
+          'step k' berarti dikurangi k setiap putaran (k wajib > 0).
         """
         start_val, _ = self.eval_expr(stmt.start_expr)
         end_val, _ = self.eval_expr(stmt.end_expr)
@@ -413,6 +415,17 @@ class Interpreter:
                 )
         else:
             step = 1
+
+        if stmt.descending:
+            if step < 0:
+                raise runtime_error(
+                    "nilai langkah (step) pada perulangan 'for ... downto' harus positif "
+                    "(step menyatakan besar pengurangan setiap putaran).",
+                    stmt.step_expr.line,
+                    stmt.step_expr.col,
+                    self._line_text(stmt.step_expr.line),
+                )
+            step = -step
 
         self.env[stmt.var_name] = curr
         if step > 0:

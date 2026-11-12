@@ -34,6 +34,20 @@ function isBoolLiteral(expr: Expr, value: boolean): boolean {
   );
 }
 
+/** Value of an integer literal like `9` or `-3`, otherwise null. */
+function intLiteral(expr: Expr | null | undefined): bigint | null {
+  if (!expr) return null;
+  if (expr._type === "LiteralExpr" && expr.typeName === "integer") {
+    return BigInt(expr.value as bigint);
+  }
+  if (expr._type === "UnaryExpr" && (expr.op === "-" || expr.op === "+")) {
+    const inner = intLiteral(expr.operand);
+    if (inner === null) return null;
+    return expr.op === "-" ? -inner : inner;
+  }
+  return null;
+}
+
 function sameLvalue(a: Expr, b: Expr): boolean {
   if (a._type === "VarExpr" && b._type === "VarExpr") return a.name === b.name;
   if (a._type === "FieldAccessExpr" && b._type === "FieldAccessExpr") {
@@ -175,17 +189,39 @@ export function lintProgram(program: Program): LintWarning[] {
         }
         markRead(stmt.startExpr);
         markRead(stmt.endExpr);
+        const startLit = intLiteral(stmt.startExpr);
+        const endLit = intLiteral(stmt.endExpr);
+        const stepLit = intLiteral(stmt.stepExpr);
         if (stmt.stepExpr) {
           markRead(stmt.stepExpr);
-          if (
-            stmt.stepExpr._type === "LiteralExpr" &&
-            stmt.stepExpr.typeName === "integer" &&
-            BigInt(stmt.stepExpr.value as bigint) === BigInt(0)
-          ) {
+          if (stepLit === BigInt(0)) {
             warn(
               "nilai 'step' 0 membuat perulangan 'for' tidak pernah maju.",
               stmt.stepExpr.line,
               stmt.stepExpr.col
+            );
+          } else if (stmt.descending && stepLit !== null && stepLit < BigInt(0)) {
+            warn(
+              `pada 'downto', step menyatakan besar pengurangan dan harus positif: tulis 'step ${-stepLit}', bukan 'step ${stepLit}'.`,
+              stmt.stepExpr.line,
+              stmt.stepExpr.col
+            );
+          }
+        }
+        // Constant bounds that make the loop run zero times.
+        const ascending = !stmt.descending && (stepLit === null || stepLit > BigInt(0));
+        if (startLit !== null && endLit !== null) {
+          if (ascending && startLit > endLit) {
+            warn(
+              `perulangan ini tidak akan pernah berjalan karena ${startLit} lebih besar dari ${endLit}; gunakan 'downto' untuk menghitung mundur (for ${stmt.varName} <- ${startLit} downto ${endLit} do).`,
+              stmt.line,
+              stmt.col
+            );
+          } else if (stmt.descending && startLit < endLit) {
+            warn(
+              `perulangan ini tidak akan pernah berjalan karena ${startLit} lebih kecil dari ${endLit}; gunakan 'to' untuk menghitung naik.`,
+              stmt.line,
+              stmt.col
             );
           }
         }

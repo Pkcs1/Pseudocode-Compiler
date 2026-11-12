@@ -34,7 +34,7 @@ The core engine is built with zero external dependencies — relying solely on t
 - **Static Semantic & Type Analysis**: Pre-execution verification of variable declarations, type compatibility, constant immutability, and struct field integrity.
 - **64-bit Integer Arithmetic**: Implements signed 64-bit integer representation with wrap-around semantics on overflow.
 - **Flexible I/O**: Multi-value whitespace-delimited terminal input reading and formatted output printing.
-- **Comprehensive Control Flow**: `if ... then ... else if ... else ... endif` branching, as well as `for` (with positive/negative steps), `while`, and `repeat-until` loops.
+- **Comprehensive Control Flow**: `if ... then ... else if ... else ... endif` branching, as well as `for` (`to` / `downto`, with optional `step`), `while`, and `repeat-until` loops.
 - **User-Defined Types**: Full support for type aliases and multi-field record/struct types.
 - **Format Tolerance**: Automatic normalization of typographic smart quotes (`"`, `"`, `'`, `'`) and assignment arrow symbols (`<-` and `←`).
 - **Modern Web IDE**: Interactive web editor featuring VS Code-style syntax highlighting, real-time interactive terminal, symbol table inspector with sparkline visualizations, and mechanical keyboard audio feedback.
@@ -230,7 +230,7 @@ endif
 ```
 
 #### Counted Loops (`for`)
-Iterates from a start value to an end value, inclusive. The counter defaults to a `+1` step, but can be customized with the `step` keyword:
+Iterates from a start value to an end value, inclusive. Use `to` to count up (default step `+1`) and `downto` to count down (default step `-1`). With `downto`, `step k` is the amount subtracted each round and must be positive:
 
 ```text
 // Ascending loop with default step (+1)
@@ -243,7 +243,17 @@ for i = 0 to 10 step 2 do
     output(i)
 endfor
 
-// Descending loop with negative step
+// Descending loop with downto (9, 8, ..., 1)
+for i = 9 downto 1 do
+    output(i)
+endfor
+
+// Descending loop, subtracting 2 each round (10, 8, ..., 0)
+for i = 10 downto 0 step 2 do
+    output(i)
+endfor
+
+// Equivalent older form: negative step with `to`
 for i = 10 to 1 step -1 do
     output(i)
 endfor

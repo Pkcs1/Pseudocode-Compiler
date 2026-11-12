@@ -24,6 +24,7 @@ export const KEYWORDS: Record<string, string> = {
   type: "TYPE",
   for: "FOR",
   to: "TO",
+  downto: "DOWNTO",
   step: "STEP",
   do: "DO",
   endfor: "ENDFOR",

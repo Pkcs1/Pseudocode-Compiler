@@ -46,3 +46,18 @@
 .no-visible-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/*
+ * Code editor selection. The textarea's text is transparent so the
+ * syntax-highlighted layer underneath shows through; keep it transparent
+ * while selected too, and only tint the background (like VS Code).
+ * The selector is more specific than the page-wide body selection rule.
+ */
+textarea.code-input::selection {
+  color: transparent;
+  background-color: rgb(91 69 255 / 0.18);
+}
+.dark textarea.code-input::selection {
+  color: transparent;
+  background-color: rgb(56 189 248 / 0.25);
+}

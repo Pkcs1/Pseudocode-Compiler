@@ -659,6 +659,43 @@ endprogram"""
             execute_program(code_step_real)
         self.assertEqual(ctx_real.exception.category, KATEGORI_SEMAN)
 
+    def test_for_downto(self):
+        """Uji 'downto': hitung mundur, 'step k' sebagai besar pengurangan, dan error step negatif."""
+        code_downto = """
+        program UjiDownto
+        kamus
+            i : integer
+        algoritma
+            for i <- 9 downto 1 do
+                output(i)
+            endfor
+            for i <- 10 downto 0 step 3 do
+                output(i)
+            endfor
+            for i <- 1 downto 5 do
+                output("tidak jalan")
+            endfor
+            output(i)
+        endprogram
+        """
+        self.assertEqual(
+            execute_program(code_downto).strip().splitlines(),
+            ["9", "8", "7", "6", "5", "4", "3", "2", "1", "10", "7", "4", "1", "1"],
+        )
+
+        # Pada 'downto', step negatif adalah runtime error (step = besar pengurangan)
+        code_downto_negative = """program TesDowntoNegatif
+kamus
+    i : integer
+algoritma
+    for i <- 9 downto 1 step -1 do
+        output(i)
+    endfor
+endprogram"""
+        with self.assertRaises(PseudoError) as ctx_neg:
+            execute_program(code_downto_negative)
+        self.assertEqual(ctx_neg.exception.category, KATEGORI_RUNTIME)
+
 
 class TestMilestone5(unittest.TestCase):
     def run_example_file(self, filename: str, input_text: str) -> str:
