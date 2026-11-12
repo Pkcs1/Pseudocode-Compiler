@@ -65,7 +65,7 @@ export function SoundVolumeControl({
   const percent = Math.round(volume * 100);
 
   return (
-    <div ref={containerRef} className="relative inline-flex items-center">
+    <div ref={containerRef} className="relative z-50 inline-flex items-center">
       {/* Speaker Toggle Button */}
       <div className="flex items-center p-0.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] dark:border-neutral-700/80 dark:bg-neutral-800/80">
         <button
@@ -102,7 +102,7 @@ export function SoundVolumeControl({
 
       {/* Popover */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-[#e2e2dc] bg-[#ffffff] p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-[#e2e2dc] bg-[#ffffff] p-3 shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-150 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-[#64748b] dark:text-neutral-400">Efek Suara Ketik</span>

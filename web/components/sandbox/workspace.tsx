@@ -275,7 +275,7 @@ export function Workspace() {
   return (
     <div className="flex flex-col w-full max-w-7xl mx-auto gap-3.5 select-text">
       {/* Top Navigation & App Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[#e5e5df] bg-[#fbfbfa]/95 shadow-md text-[#0f172a] backdrop-blur-md dark:border-neutral-800 dark:bg-[#0d0f12]/95 dark:text-white transition-colors">
+      <header className="relative z-40 flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[#e5e5df] bg-[#fbfbfa]/95 shadow-md text-[#0f172a] backdrop-blur-md dark:border-neutral-800 dark:bg-[#0d0f12]/95 dark:text-white transition-colors">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#ede9fe] border border-[#ddd6fe] text-[#5b45ff] dark:bg-purple-500/10 dark:border-purple-500/30 dark:text-purple-400">
             <Code2 className="w-5 h-5" />
@@ -349,7 +349,7 @@ export function Workspace() {
       </header>
 
       {/* TOP PANE: Structured Code Editor with VS Code Syntax Highlighting */}
-      <section className="w-full h-[330px] min-h-[260px]">
+      <section className="w-full h-[330px] min-h-[260px] relative z-10">
         <PseudocodeEditor
           code={code}
           onChange={setCode}
