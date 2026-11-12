@@ -7,7 +7,6 @@ import {
   Play,
   Square,
   FileCode,
-  Network,
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,6 @@ interface PseudocodeEditorProps {
   errorLine?: number | null;
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
-  onOpenAst?: () => void;
   onLoadExample?: (name: string) => void;
   lastExecutionMs?: number | null;
 }
@@ -44,7 +42,6 @@ export function PseudocodeEditor({
   errorLine,
   onKeyDownSound,
   onKeyUpSound,
-  onOpenAst,
   onLoadExample,
   lastExecutionMs,
 }: PseudocodeEditorProps) {
@@ -292,18 +289,7 @@ export function PseudocodeEditor({
             </div>
           )}
 
-          {/* AST Inspector Button */}
-          {onOpenAst && (
-            <button
-              type="button"
-              onClick={onOpenAst}
-              title="Lihat pohon sintaks (AST)"
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
-            >
-              <Network className="w-3 h-3 text-purple-400" />
-              <span>AST</span>
-            </button>
-          )}
+
 
           {/* Copy Button */}
           <button

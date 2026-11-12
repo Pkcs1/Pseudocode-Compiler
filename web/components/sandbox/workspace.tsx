@@ -6,15 +6,11 @@ import {
   Square,
   BookOpen,
   Code2,
-  Terminal,
-  Activity,
 } from "lucide-react";
 import { PseudocodeEditor } from "./pseudocode-editor";
 import { ResultsPane, TerminalEntry } from "./results-pane";
 import { DiagnosticsNotes } from "./diagnostics-notes";
-import { BottomCommandBar } from "./bottom-command-bar";
 import { SyntaxCheatsheetModal } from "./syntax-cheatsheet-modal";
-import { AstInspectorModal } from "./ast-inspector-modal";
 import { ThemeToggle } from "./theme-toggle";
 import { SoundVolumeControl } from "./sound-volume-control";
 import { InspectResult } from "@/lib/runner";
@@ -79,7 +75,7 @@ endprogram`,
 };
 
 export function Workspace() {
-  const [code, setCode] = useState<string>(EXAMPLES.warung);
+  const [code, setCode] = useState<string>("");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
@@ -93,7 +89,6 @@ export function Workspace() {
     return saved !== null ? Number(saved) : 0.7;
   });
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
-  const [isAstOpen, setIsAstOpen] = useState<boolean>(false);
 
   const runnerHandleRef = useRef<ExecutionHandle | null>(null);
   const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
@@ -279,7 +274,7 @@ export function Workspace() {
 
   return (
     <div className="flex flex-col w-full max-w-7xl mx-auto gap-3.5 select-text">
-      {/* Top Navigation & App Header (Hybrid macOS & Terminal Bar) */}
+      {/* Top Navigation & App Header */}
       <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-neutral-800 bg-[#0d0f12]/95 shadow-xl backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400">
@@ -299,8 +294,6 @@ export function Workspace() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                 client engine online
               </span>
-              <span>•</span>
-              <span>Standard ITB / Alpro</span>
             </div>
           </div>
         </div>
@@ -356,7 +349,7 @@ export function Workspace() {
       </header>
 
       {/* TOP PANE: Structured Code Editor with VS Code Syntax Highlighting */}
-      <section className="w-full h-[320px] min-h-[260px]">
+      <section className="w-full h-[330px] min-h-[260px]">
         <PseudocodeEditor
           code={code}
           onChange={setCode}
@@ -366,14 +359,13 @@ export function Workspace() {
           errorLine={errorLine}
           onKeyDownSound={soundDown}
           onKeyUpSound={soundUp}
-          onOpenAst={() => setIsAstOpen(true)}
           onLoadExample={handleLoadExample}
           lastExecutionMs={lastExecutionMs}
         />
       </section>
 
-      {/* BOTTOM PANE: Split Dual-Card Layout (Option 2 RESULTS + NOTES/NEXT) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 h-[340px] min-h-[280px] w-full">
+      {/* BOTTOM PANE: Split Dual-Card Layout (RESULTS + NOTES) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 h-[360px] min-h-[280px] w-full">
         {/* Left 7 Columns: RESULTS (Console Terminal & Kamus Symbol Table with Sparkbars) */}
         <div className="lg:col-span-7 h-full min-h-0">
           <ResultsPane
@@ -390,39 +382,16 @@ export function Workspace() {
           />
         </div>
 
-        {/* Right 5 Columns: NOTES & NEXT (Diagnostics & Numbered Shortcut Actions) */}
+        {/* Right 5 Columns: NOTES (Diagnostics & Analysis) */}
         <div className="lg:col-span-5 h-full min-h-0">
           <DiagnosticsNotes
             code={code}
             inspectData={inspectData}
-            onLoadExample={handleLoadExample}
             onOpenCheatsheet={() => setIsCheatsheetOpen(true)}
             onClearConsole={() => setEntries([])}
           />
         </div>
       </section>
-
-      {/* BOTTOM COMMAND / STDIN BAR (Option 2 Prompt Bar) */}
-      <section className="w-full">
-        <BottomCommandBar
-          isRunning={isRunning}
-          isWaitingInput={isWaitingInput}
-          onSendInput={handleSendInput}
-          onRun={runCode}
-          onClear={() => setEntries([])}
-          onOpenCheatsheet={() => setIsCheatsheetOpen(true)}
-          onLoadExample={handleLoadExample}
-          onKeyDownSound={soundDown}
-          onKeyUpSound={soundUp}
-        />
-      </section>
-
-      {/* AST Inspector Modal */}
-      <AstInspectorModal
-        isOpen={isAstOpen}
-        onClose={() => setIsAstOpen(false)}
-        ast={inspectData?.ast || null}
-      />
 
       {/* Cheatsheet Modal */}
       <SyntaxCheatsheetModal
