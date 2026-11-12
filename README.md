@@ -1,85 +1,89 @@
 # Pseudocode Compiler & Interpreter
 
-Engine compiler dan interpreter berbasis Python untuk menganalisis, memeriksa validitas tipe (*semantic checking*), dan mengeksekusi bahasa *pseudocode* terstruktur. Proyek ini dilengkapi dengan antarmuka baris perintah (CLI), *interactive runner* dengan *streaming* I/O, serta antarmuka web modern (Web IDE).
+A Python-based compiler and interpreter engine designed to analyze, type-check (*static semantic analysis*), and execute structured pseudocode. The project features a Command-Line Interface (CLI), an interactive runner with streaming I/O, and a modern Web IDE built with Next.js and Tailwind CSS.
 
-Inti (*core engine*) dibangun tanpa dependensi eksternal — hanya menggunakan pustaka standar (*standard library*) Python.
+The core engine is built with zero external dependencies — relying solely on the Python standard library.
 
 ---
 
-## Daftar Isi
-1. [Fitur Utama](#fitur-utama)
-2. [Arsitektur & Pipeline Kompilasi](#arsitektur--pipeline-kompilasi)
-3. [Prasyarat](#prasyarat)
-4. [Cara Menjalankan](#cara-menjalankan)
+## Table of Contents
+1. [Key Features](#key-features)
+2. [Architecture & Compilation Pipeline](#architecture--compilation-pipeline)
+3. [Prerequisites](#prerequisites)
+4. [How to Run](#how-to-run)
    - [1. Command-Line Interface (CLI)](#1-command-line-interface-cli)
    - [2. Interactive Runner & AST Inspector](#2-interactive-runner--ast-inspector)
-   - [3. Web IDE (Antarmuka Web)](#3-web-ide-antarmuka-web)
-5. [Panduan Sintaks Pseudocode](#panduan-sintaks-pseudocode)
-   - [Kerangka Program](#kerangka-program)
-   - [Tipe Data Dasar](#tipe-data-dasar)
-   - [Deklarasi pada Bagian Kamus](#deklarasi-pada-bagian-kamus)
-   - [Instruksi pada Bagian Algoritma](#instruksi-pada-bagian-algoritma)
-   - [Struktur Kontrol & Perulangan](#struktur-kontrol--perulangan)
-   - [Operator & Tingkat Prioritas](#operator--tingkat-prioritas)
-6. [Contoh Program](#contoh-program)
-7. [Penanganan & Diagnostik Error](#penanganan--diagnostik-error)
-8. [Struktur Proyek](#struktur-proyek)
-9. [Pengujian Otomatis (Unit Testing)](#pengujian-otomatis-unit-testing)
+   - [3. Web IDE](#3-web-ide)
+5. [Pseudocode Syntax Guide](#pseudocode-syntax-guide)
+   - [Program Skeleton](#program-skeleton)
+   - [Primitive Data Types](#primitive-data-types)
+   - [Declarations in the Dictionary (`kamus`)](#declarations-in-the-dictionary-kamus)
+   - [Instructions in the Algorithm (`algoritma`)](#instructions-in-the-algorithm-algoritma)
+   - [Control Structures & Loops](#control-structures--loops)
+   - [Operators & Precedence](#operators--precedence)
+6. [Code Examples](#code-examples)
+7. [Error Handling & Diagnostics](#error-handling--diagnostics)
+8. [Project Structure](#project-structure)
+9. [Automated Testing](#automated-testing)
 
 ---
 
-## Fitur Utama
+## Key Features
 
-- **Pipeline Kompilasi Mandiri**: Memisahkan tahapan *Lexer*, *Parser*, *Semantic Checker*, dan *Runtime Interpreter* secara modular.
-- **Pengecekan Tipe Statis (Static Semantic Analysis)**: Memvalidasi deklarasi variabel, kesesuaian tipe data, pencegahan modifikasi konstanta (*immutability*), dan integritas *field struct* sebelum kode dieksekusi.
-- **Aritmatika Integer 64-bit**: Mengimplementasikan representasi *64-bit signed integer* dengan semantik *wrap-around* saat terjadi *overflow*.
-- **I/O Fleksibel**: Pembacaan input multi-nilai berbasis *whitespace* (spasi/baris baru) dan pencetakan keluaran terformat.
-- **Struktur Kontrol Lengkap**: Percabangan `if ... then ... else if ... else ... endif` serta perulangan `for` (dengan *step* positif/negatif), `while`, dan `repeat-until`.
-- **Tipe Data Bentukan**: Mendukung alias tipe dan tipe bentukan rekaman (*struct*) multi-field.
-- **Toleransi Format Teks**: Normalisasi otomatis karakter *smart quotes* (`“`, `”`, `‘`, `’`) serta simbol panah assignment (`<-` dan `←`).
-- **Modern Web IDE**: Editor web interaktif berbasis Next.js dengan penyorotan kode, terminal interaktif real-time, visualisasi AST & tabel simbol, serta efek audio mekanik.
+- **Modular Compilation Pipeline**: Fully separated stages for *Lexer*, *Parser*, *Semantic Checker*, and *Runtime Interpreter*.
+- **Static Semantic & Type Analysis**: Pre-execution verification of variable declarations, type compatibility, constant immutability, and struct field integrity.
+- **64-bit Integer Arithmetic**: Implements signed 64-bit integer representation with wrap-around semantics on overflow.
+- **Flexible I/O**: Multi-value whitespace-delimited terminal input reading and formatted output printing.
+- **Comprehensive Control Flow**: `if ... then ... else if ... else ... endif` branching, as well as `for` (with positive/negative steps), `while`, and `repeat-until` loops.
+- **User-Defined Types**: Full support for type aliases and multi-field record/struct types.
+- **Format Tolerance**: Automatic normalization of typographic smart quotes (`"`, `"`, `'`, `'`) and assignment arrow symbols (`<-` and `←`).
+- **Modern Web IDE**: Interactive web editor featuring VS Code-style syntax highlighting, real-time interactive terminal, symbol table inspector with sparkline visualizations, and mechanical keyboard audio feedback.
 
 ---
 
-## Arsitektur & Pipeline Kompilasi
+## Architecture & Compilation Pipeline
 
-Setiap kode program diproses melalui 4 tahapan berurutan:
+Source code is processed through 4 sequential stages:
 
 ```
-[ Kode Sumber (.pseudo) ]
+[ Source Code (.pseudo) ]
            │
            ▼
-┌─────────────────────────────────┐
-│     1. Lexer (lexer.py)         │  Mengubah teks menjadi aliran Token, melacak nomor baris/kolom,
-│                                 │  menormalisasi tanda kutip, dan mengabaikan komentar (// dan { }).
-└────────────────┬────────────────┘
+┌────────────────────────────────┐
+│      1. Lexer (lexer.py)       │  Tokenizes source text, tracks line and column numbers,
+│                                │  normalizes quotes, and strips comments (// and { }).
+└────────────────┬───────────────┘
+                 │
                  ▼
-┌─────────────────────────────────┐
-│     2. Parser (parser.py)       │  Menerapkan Recursive-Descent Parsing dengan 9 tingkat prioritas
-│                                 │  operator untuk membangun pohon sintaks abstrak (AST).
-└────────────────┬────────────────┘
+┌────────────────────────────────┐
+│     2. Parser (parser.py)      │  Recursive-Descent Parser with 9 levels of operator
+│                                │  precedence to construct the Abstract Syntax Tree (AST).
+└────────────────┬───────────────┘
+                 │
                  ▼
-┌─────────────────────────────────┐
-│  3. Checker (checker.py)        │  Analisis Semantik Statis: memastikan semua variabel terdaftar,
-│                                 │  menolak mutasi konstanta, dan mencocokkan tipe sebelum eksekusi.
-└────────────────┬────────────────┘
+┌────────────────────────────────┐
+│   3. Checker (checker.py)      │  Static Semantic Analysis: validates variable scope,
+│                                │  enforces constant immutability, and checks types.
+└────────────────┬───────────────┘
+                 │
                  ▼
-┌─────────────────────────────────┐
-│ 4. Interpreter (interpreter.py) │  Mengeksekusi AST baris demi baris, mengelola memori runtime,
-│                                 │  menangani I/O, serta membungkus nilai integer ke rentang 64-bit.
-└────────────────┬────────────────┘
+┌────────────────────────────────┐
+│ 4. Interpreter (interpreter.py)│  Executes AST statements, manages runtime memory,
+│                                │  handles I/O, and wraps integers to 64-bit signed ranges.
+└────────────────┬───────────────┘
+                 │
                  ▼
-         [ Hasil Eksekusi ]
+        [ Execution Output ]
 ```
 
 ---
 
-## Prasyarat
+## Prerequisites
 
-- **Python 3.10** atau versi lebih baru (wajib untuk *core compiler*).
-- **Node.js 18+** & **npm** (opsional, hanya diperlukan jika ingin menjalankan Web IDE).
+- **Python 3.10** or newer (required for the core compiler engine).
+- **Node.js 18+** & **npm** (optional, only needed to run the Web IDE).
 
-Periksa versi Python di terminal:
+Verify your Python version:
 
 ```bash
 python --version
@@ -87,35 +91,35 @@ python --version
 
 ---
 
-## Cara Menjalankan
+## How to Run
 
 ### 1. Command-Line Interface (CLI)
 
-Jalankan file berekstensi `.pseudo` menggunakan skrip utama `pseudo.py`:
+Run any `.pseudo` file using the main entry script `pseudo.py`:
 
 ```bash
-python pseudo.py contoh.pseudo
+python pseudo.py example.pseudo
 ```
 
-Jika program meminta masukan (`input`), ketik nilai di terminal lalu tekan **Enter**. Anda juga dapat mengarahkan masukan dari file teks (*stdin redirection*):
+If the program requires terminal inputs (`input`), type the values and press **Enter**. You can also redirect input from a text file:
 
 ```bash
-python pseudo.py contoh.pseudo < input.txt
+python pseudo.py example.pseudo < input.txt
 ```
 
 ### 2. Interactive Runner & AST Inspector
 
-Compiler menyertakan utilitas `interactive_runner.py` untuk integrasi lingkungan interaktif dan inspeksi struktur internal program.
+The compiler provides `interactive_runner.py` for integration with interactive environments and inspection of internal compiler representations.
 
-Melihat tabel token, pohon AST, dan tabel simbol tanpa mengeksekusi program:
+To inspect tokens, the AST tree, and symbol table without executing the code:
 
 ```bash
-python interactive_runner.py --inspect contoh.pseudo
+python interactive_runner.py --inspect example.pseudo
 ```
 
-### 3. Web IDE (Antarmuka Web)
+### 3. Web IDE
 
-Untuk menjalankan antarmuka web interaktif lokal:
+To run the interactive web interface locally:
 
 ```bash
 cd web
@@ -123,74 +127,74 @@ npm install
 npm run dev
 ```
 
-Buka peramban di `http://localhost:3000` untuk menggunakan editor kode berbasis web, inspektur AST visual, dan terminal interaktif.
+Open your browser at `http://localhost:3000` to access the web editor, live symbol table inspector, and interactive terminal.
 
 ---
 
-## Panduan Sintaks Pseudocode
+## Pseudocode Syntax Guide
 
-Semua kata kunci (*keywords*) ditulis menggunakan **huruf kecil (lowercase)**. Komentar dapat ditulis menggunakan `// ...` (satu baris) maupun `{ ... }` (satu atau banyak baris).
+All language keywords are **case-insensitive** (typically written in lowercase). Comments can be written as single-line (`// ...`) or bracketed multi-line (`{ ... }`).
 
-### Kerangka Program
+### Program Skeleton
 
-Setiap program wajib diawali dengan blok `program`, diikuti bagian deklarasi `kamus`, bagian instruksi `algoritma`, dan diakhiri dengan `endprogram`:
+Every pseudocode program must define three main blocks: `program`, a `kamus` dictionary section, and an `algoritma` instruction block, terminated by `endprogram`:
 
 ```text
-program NamaProgram
+program ProgramName
 kamus
-    // deklarasi tipe bentukan, konstanta, dan variabel
+    // Declarations: types, constants, and variables
 algoritma
-    // instruksi eksekusi program
+    // Program instructions and execution logic
 endprogram
 ```
 
-### Tipe Data Dasar
+### Primitive Data Types
 
-| Tipe Data | Contoh Literal | Keterangan |
+| Data Type | Example Literal | Description |
 | :--- | :--- | :--- |
-| `integer` | `10`, `-5`, `0` | Bilangan bulat bertanda 64-bit (*signed*) |
-| `real` | `3.14`, `-0.5` | Bilangan pecahan / desimal (*floating-point* 64-bit) |
-| `string` | `"Halo Dunia"` | Untaian teks dalam tanda petik ganda (`"..."`) |
-| `char` | `'A'`, `'9'`, `'\n'` | Karakter tunggal dalam tanda petik tunggal (`'...'`) |
-| `boolean` | `true`, `false` | Nilai kebenaran logika |
+| `integer` | `10`, `-5`, `0` | Signed 64-bit integer |
+| `real` | `3.14`, `-0.5` | 64-bit floating-point decimal |
+| `string` | `"Hello World"` | Double-quoted text string |
+| `char` | `'A'`, `'9'`, `'\n'` | Single character enclosed in single quotes |
+| `boolean` | `true`, `false` | Logical boolean values |
 
-### Deklarasi pada Bagian `kamus`
+### Declarations in the Dictionary (`kamus`)
 
-Deklarasi di dalam bagian `kamus` bersifat fleksibel (urutan deklarasi bebas):
+Declarations inside the `kamus` block can appear in any order:
 
 ```text
 kamus
-    // 1. Deklarasi Variabel
+    // 1. Variable Declarations
     x, y, total : integer
-    panjang, lebar : real
-    nama : string
-    status : boolean
+    width, height : real
+    name : string
+    isActive : boolean
 
-    // 2. Deklarasi Konstanta (nilai tetap)
+    // 2. Constant Declarations (immutable values)
     constant PI : real = 3.1415926535
-    constant BATAS_MAKS : integer <- 100
+    constant MAX_LIMIT : integer <- 100
 
-    // 3. Tipe Alias
-    type bilangan : integer
+    // 3. Type Aliases
+    type Number : integer
 
-    // 4. Tipe Bentukan (Struct / Record)
-    type Titik <
+    // 4. Record / Struct Types
+    type Point <
         x, y : real
     >
-    type Mahasiswa <
+    type Student <
         id : integer
-        nama : string
-        ipk : real
+        name : string
+        gpa : real
     >
 
-    p1 : Titik
-    mhs1 : Mahasiswa
+    p1 : Point
+    s1 : Student
 ```
 
-### Instruksi pada Bagian `algoritma`
+### Instructions in the Algorithm (`algoritma`)
 
-#### Pengisian Nilai (Assignment)
-Dapat menggunakan operator `=` maupun tanda panah `<-` (atau `←`):
+#### Value Assignment
+You can use either the `=` operator or the assignment arrow `<-` (or `←`):
 
 ```text
 total = 0
@@ -199,55 +203,55 @@ p1.x = 2.5
 p1.y <- 4.0
 ```
 
-#### Masukan dan Keluaran (`input` & `output`)
-- `input(var1, var2, ...)` membaca token masukan yang dipisahkan oleh *whitespace* (spasi, tab, atau baris baru).
-- `output(expr1, expr2, ...)` mencetak nilai ekspresi ke layar yang dipisahkan dengan spasi dan diakhiri dengan baris baru.
+#### Input and Output (`input` & `output`)
+- `input(var1, var2, ...)` reads whitespace-delimited tokens (spaces, tabs, newlines) from standard input.
+- `output(expr1, expr2, ...)` prints expression values separated by spaces and terminated with a newline.
 
 ```text
 input(x, y)
-output("Hasil penjumlahan:", x + y)
+output("Sum result:", x + y)
 ```
 
-### Struktur Kontrol & Perulangan
+### Control Structures & Loops
 
-#### Percabangan (`if ... then ... else if ... else ... endif`)
-Mengevaluasi ekspresi berkondisi `boolean`:
+#### Conditional Branching (`if ... then ... else if ... else ... endif`)
+Evaluates boolean expressions:
 
 ```text
-if nilai >= 80 then
-    output("Kategori: A")
-else if nilai >= 70 then
-    output("Kategori: B")
-else if nilai >= 60 then
-    output("Kategori: C")
+if score >= 80 then
+    output("Grade: A")
+else if score >= 70 then
+    output("Grade: B")
+else if score >= 60 then
+    output("Grade: C")
 else
-    output("Kategori: D")
+    output("Grade: D")
 endif
 ```
 
-#### Perulangan Tercacah (`for`)
-Mencacah dari nilai awal hingga batas akhir secara inklusif. Secara bawaan nilai pencacah bertambah `+1`, atau dapat diatur menggunakan kata kunci `step`:
+#### Counted Loops (`for`)
+Iterates from a start value to an end value, inclusive. The counter defaults to a `+1` step, but can be customized with the `step` keyword:
 
 ```text
-// Menaik dengan interval default (+1)
+// Ascending loop with default step (+1)
 for i = 1 to 5 do
     output(i)
 endfor
 
-// Menaik dengan interval kustom
+// Ascending loop with custom step
 for i = 0 to 10 step 2 do
     output(i)
 endfor
 
-// Menurun dengan step negatif
+// Descending loop with negative step
 for i = 10 to 1 step -1 do
     output(i)
 endfor
 ```
 
-#### Perulangan Berbasis Kondisi (`while` & `repeat-until`)
-- `while <kondisi> do ... endwhile`: Memeriksa kondisi di awal; berulang **selama** kondisi bernilai `true`.
-- `repeat ... until <kondisi>`: Mengeksekusi blok minimal 1 kali; berulang **sampai** kondisi bernilai `true` (pemeriksaan di akhir).
+#### Condition-Based Loops (`while` & `repeat-until`)
+- `while <condition> do ... endwhile`: Evaluates the condition upfront; repeats **while** the condition is `true`.
+- `repeat ... until <condition>`: Executes the block at least once; repeats **until** the condition becomes `true` (checked at the end).
 
 ```text
 // While loop
@@ -258,120 +262,120 @@ endwhile
 
 // Repeat-until loop
 repeat
-    cacah = cacah + 1
-    output("Iterasi ke-", cacah)
-until cacah == 5
+    count = count + 1
+    output("Iteration:", count)
+until count == 5
 ```
 
-### Operator & Tingkat Prioritas
+### Operators & Precedence
 
-Tingkat prioritas operator dievaluasi dari prioritas tertinggi (1) ke terendah (9):
+Operator precedence is evaluated from highest (1) to lowest (9):
 
-| Tingkat | Kategori | Operator | Asosiatif | Keterangan |
+| Level | Category | Operator | Associativity | Description |
 | :---: | :--- | :--- | :---: | :--- |
-| **1** | Pengelompokan & Akses | `( )`, `.`, `len()` | Kiri ke Kanan | Prioritas tanda kurung dan akses *field struct* |
-| **2** | Unary | `+`, `-`, `not` | Kanan ke Kiri | Tanda bilangan dan negasi logika |
-| **3** | Eksponensial | `^` | Kanan ke Kiri | Operasi pangkat |
-| **4** | Perkalian & Bitwise | `*`, `/`, `div`, `mod`, `<<`, `>>`, `&` | Kiri ke Kanan | `/` selalu menghasilkan `real`; `div` & `mod` khusus `integer` |
-| **5** | Penjumlahan & Bitwise Or | `+`, `-`, `\|` | Kiri ke Kanan | `+` juga berlaku untuk konkatenasi `string` |
-| **6** | Perbandingan Relasional | `<`, `<=`, `>`, `>=` | Kiri ke Kanan | Menghasilkan nilai `boolean` |
-| **7** | Perbandingan Kesetaraan | `==`, `!=`, `<>` | Kiri ke Kanan | `<>` ekuivalen dengan `!=` |
-| **8** | Logika And | `and` | Kiri ke Kanan | Evaluasi *short-circuit* |
-| **9** | Logika Or | `or` | Kiri ke Kanan | Evaluasi *short-circuit* |
+| **1** | Grouping & Access | `( )`, `.`, `len()` | Left-to-Right | Parentheses priority and struct field access |
+| **2** | Unary | `+`, `-`, `not` | Right-to-Left | Sign prefix and logical negation |
+| **3** | Exponentiation | `^` | Right-to-Left | Power operation |
+| **4** | Multiplicative & Bitwise | `*`, `/`, `div`, `mod`, `<<`, `>>`, `&` | Left-to-Right | `/` always produces `real`; `div` & `mod` require `integer` |
+| **5** | Additive & Bitwise Or | `+`, `-`, `\|` | Left-to-Right | `+` also concatenates `string` operands |
+| **6** | Relational Comparison | `<`, `<=`, `>`, `>=` | Left-to-Right | Returns a `boolean` result |
+| **7** | Equality Comparison | `==`, `!=`, `<>` | Left-to-Right | `<>` is equivalent to `!=` |
+| **8** | Logical And | `and` | Left-to-Right | Short-circuit evaluation |
+| **9** | Logical Or | `or` | Left-to-Right | Short-circuit evaluation |
 
 ---
 
-## Contoh Program
+## Code Examples
 
-### 1. Perhitungan Geometri Tabung (Struct & Konstanta)
+### 1. Cylinder Volume Calculation (Struct & Constant)
 
 ```text
-program HitungTabung
+program CalculateCylinder
 kamus
     constant PI : real = 3.1415926535
-    type Tabung <
-        jari_jari : real
-        tinggi : real
+    type Cylinder <
+        radius : real
+        height : real
         volume : real
     >
-    t : Tabung
+    c : Cylinder
 algoritma
-    input(t.jari_jari, t.tinggi)
-    t.volume = PI * (t.jari_jari ^ 2) * t.tinggi
-    output("Volume tabung:", t.volume)
+    input(c.radius, c.height)
+    c.volume = PI * (c.radius ^ 2) * c.height
+    output("Cylinder volume:", c.volume)
 endprogram
 ```
 
-### 2. Deret Bilangan & Perulangan Kondisional
+### 2. Number Sequence & Conditional Loop
 
 ```text
-program DeretAngka
+program NumberSequence
 kamus
-    batas, total, bil : integer
+    limit, total, num : integer
 algoritma
-    input(batas)
+    input(limit)
     total = 0
-    bil = 1
+    num = 1
 
-    while bil <= batas do
-        if bil mod 2 == 0 then
-            total = total + bil
+    while num <= limit do
+        if num mod 2 == 0 then
+            total = total + num
         endif
-        bil = bil + 1
+        num = num + 1
     endwhile
 
-    output("Jumlah bilangan genap:", total)
+    output("Sum of even numbers:", total)
 endprogram
 ```
 
 ---
 
-## Penanganan & Diagnostik Error
+## Error Handling & Diagnostics
 
-Compiler memvalidasi program dalam tahapan yang ketat dan menghasilkan pesan kesalahan informatif beserta nomor baris dan kolom yang tepat:
+The compiler enforces strict verification at each stage, producing informative error messages with precise line and column numbers:
 
-1. **Kesalahan Sintaks (*Syntax Error*)**:
-   Terjadi pada tahap *Lexer* atau *Parser* saat kode tidak sesuai tata bahasa formal (misalnya simbol tidak valid, string tidak tertutup, atau kata penutup yang hilang seperti `endprogram`, `endif`, `endfor`).
-2. **Kesalahan Semantik & Tipe (*Semantic / Type Error*)**:
-   Terdeteksi pada tahap *Checker* sebelum eksekusi dimulai:
-   - Penggunaan variabel yang belum dideklarasikan di `kamus`.
-   - Modifikasi nilai `constant` (baik melalui assignment maupun `input`).
-   - Ketidakcocokan tipe (seperti memberikan nilai `real` ke variabel `integer`).
-   - Akses *field struct* yang tidak terdefinisi.
-3. **Kesalahan Waktu Eksekusi (*Runtime Error*)**:
-   Terjadi saat program berjalan di *Interpreter*:
-   - Pembagian dengan nol (`/`, `div`, atau `mod` dengan penyebut `0`).
-   - Variabel dibaca sebelum pernah diisi nilainya.
-   - Nilai masukan pengguna tidak valid atau data pada stream habis.
-   - Nilai parameter `step` pada perulangan bernilai `0`.
+1. **Syntax Errors**:
+   Detected during the *Lexer* or *Parser* stage when code violates grammatical rules (e.g., invalid characters, unclosed strings, or missing closing keywords like `endprogram`, `endif`, `endfor`).
+2. **Semantic & Type Errors**:
+   Caught by the *Semantic Checker* before execution:
+   - Use of undeclared variables in `algoritma`.
+   - Mutation of a `constant` (via assignment or `input`).
+   - Type mismatches (e.g., assigning a `real` value directly to an `integer` variable).
+   - Access to undefined struct fields.
+3. **Runtime Errors**:
+   Raised during execution in the *Interpreter*:
+   - Division by zero (`/`, `div`, or `mod` with a `0` denominator).
+   - Reading an uninitialized variable before any value has been assigned.
+   - Exhausted or invalid input data stream.
+   - Loop `step` parameter evaluated to `0`.
 
 ---
 
-## Struktur Proyek
+## Project Structure
 
 ```text
 Pseudocode Compiler/
-├── pseudo.py                # Command-Line Interface (CLI) utama
-├── interactive_runner.py    # Runner interaktif & inspeksi AST untuk frontend/web
-├── lexer.py                 # Analisis leksikal & tokenisasi
-├── parser.py                # Recursive-descent parser (pembentukan AST)
-├── ast_nodes.py             # Definisi kelas node AST
-├── checker.py               # Analisis semantik & verifikasi tipe data
-├── interpreter.py           # Runtime engine & eksekusi baris perintah
-├── errors.py                # Definisi & pemformatan diagnostik error
-├── docs/                    # Dokumentasi spesifikasi bahasa & keputusan semantik
-├── tests/                   # Rangkaian pengujian unit test otomatis
-│   └── examples/            # File contoh program .pseudo, .in, dan .out
-└── web/                     # Aplikasi Web IDE interaktif (Next.js & Tailwind CSS)
+├── pseudo.py                # Main CLI entry point
+├── interactive_runner.py    # Interactive runner & AST inspection utility
+├── lexer.py                 # Lexical analysis & tokenization
+├── parser.py                # Recursive-descent parser (AST construction)
+├── ast_nodes.py             # AST node class definitions
+├── checker.py               # Static semantic analysis & type validation
+├── interpreter.py           # Runtime engine & execution environment
+├── errors.py                # Error definitions and diagnostic formatting
+├── docs/                    # Language specifications & design notes
+├── tests/                   # Automated unit test suite
+│   └── examples/            # Example .pseudo, .in, and .out test fixtures
+└── web/                     # Interactive Web IDE (Next.js & Tailwind CSS)
 ```
 
 ---
 
-## Pengujian Otomatis (Unit Testing)
+## Automated Testing
 
-Proyek ini dilengkapi dengan cakupan pengujian komprehensif untuk memastikan akurasi leksikal, tata bahasa, penegakan aturan semantik, serta eksekusi runtime.
+The project includes an extensive test suite verifying lexical analysis, parsing, semantic rules, and runtime execution correctness.
 
-Jalankan seluruh pengujian dengan modul `unittest` bawaan Python:
+Run all tests using Python's built-in `unittest` runner:
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
