@@ -5,23 +5,87 @@ import {
   Play,
   Square,
   BookOpen,
-  Code,
+  Code2,
+  Terminal,
+  Activity,
 } from "lucide-react";
 import { PseudocodeEditor } from "./pseudocode-editor";
-import { InteractiveTerminal, TerminalEntry } from "./interactive-terminal";
+import { ResultsPane, TerminalEntry } from "./results-pane";
+import { DiagnosticsNotes } from "./diagnostics-notes";
+import { BottomCommandBar } from "./bottom-command-bar";
 import { SyntaxCheatsheetModal } from "./syntax-cheatsheet-modal";
+import { AstInspectorModal } from "./ast-inspector-modal";
 import { ThemeToggle } from "./theme-toggle";
 import { SoundVolumeControl } from "./sound-volume-control";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
-import { inspectSource, executePseudocode, ExecutionHandle } from "@/lib/engine";
+import {
+  inspectSource,
+  executePseudocode,
+  ExecutionHandle,
+  VariableSnapshot,
+} from "@/lib/engine";
+
+const EXAMPLES: Record<string, string> = {
+  warung: `program Warung
+kamus
+    harga, jumlah, diskon : integer
+    persen, totalAwal, potongan, total : real
+algoritma
+    input(harga, jumlah, diskon)
+    persen = diskon / 100
+    totalAwal = harga * jumlah
+    potongan = totalAwal * persen
+    total = totalAwal - potongan
+    output(total, total >= 50000)
+endprogram`,
+  rata: `program RataRata
+kamus
+    i, n, x, tot : integer
+    rata : real
+algoritma
+    input(n)
+    tot <- 0
+    for i <- 1 to n do
+        input(x)
+        tot <- tot + x
+    endfor
+    rata <- tot / n
+    output(rata, rata >= 70)
+endprogram`,
+  tes: `program CekNilai
+kamus
+    x : integer
+algoritma
+    input(x)
+    if x > 10 then
+        output("X lebih besar dari 10")
+    else
+        output("X kurang dari atau sama dengan 10")
+    endif
+endprogram`,
+  titik: `program JarakTitik
+kamus
+    type Titik : < x : real, y : real >
+    p1, p2 : Titik
+    dx, dy : real
+algoritma
+    input(p1.x, p1.y)
+    input(p2.x, p2.y)
+    dx <- p2.x - p1.x
+    dy <- p2.y - p1.y
+    output("Selisih koordinat:", dx, dy)
+endprogram`,
+};
 
 export function Workspace() {
-  const [code, setCode] = useState<string>("");
+  const [code, setCode] = useState<string>(EXAMPLES.warung);
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
   const [inspectData, setInspectData] = useState<InspectResult | null>(null);
+  const [variableSnapshot, setVariableSnapshot] = useState<VariableSnapshot | null>(null);
+  const [lastExecutionMs, setLastExecutionMs] = useState<number | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [soundVolume, setSoundVolume] = useState<number>(() => {
     if (typeof window === "undefined") return 0.7;
@@ -29,6 +93,7 @@ export function Workspace() {
     return saved !== null ? Number(saved) : 0.7;
   });
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
+  const [isAstOpen, setIsAstOpen] = useState<boolean>(false);
 
   const runnerHandleRef = useRef<ExecutionHandle | null>(null);
   const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
@@ -43,7 +108,7 @@ export function Workspace() {
     }
   };
 
-  // Immediate in-browser inspection on code changes
+  // Immediate in-browser semantic inspection on code changes
   useEffect(() => {
     if (!code.trim()) {
       setInspectData(null);
@@ -76,7 +141,7 @@ export function Workspace() {
       {
         id: crypto.randomUUID(),
         type: "system",
-        text: "[Eksekusi program dihentikan]",
+        text: "[Eksekusi program dihentikan pengguna]",
       },
     ]);
   }, []);
@@ -124,9 +189,13 @@ export function Workspace() {
         onNeedInput: () => {
           setIsWaitingInput(true);
         },
+        onVariablesSnapshot: (snap) => {
+          setVariableSnapshot(snap);
+        },
         onError: (err, durationMs) => {
           setIsWaitingInput(false);
           setIsRunning(false);
+          setLastExecutionMs(durationMs);
           if (err.line) {
             setErrorLine(err.line);
           }
@@ -140,9 +209,13 @@ export function Workspace() {
             },
           ]);
         },
-        onExit: (codeNum, durationMs) => {
+        onExit: (codeNum, durationMs, snap) => {
           setIsWaitingInput(false);
           setIsRunning(false);
+          setLastExecutionMs(durationMs);
+          if (snap) {
+            setVariableSnapshot(snap);
+          }
           setEntries((prev) => [
             ...prev,
             {
@@ -196,27 +269,50 @@ export function Workspace() {
     }
   };
 
+  const handleLoadExample = (name: string) => {
+    if (EXAMPLES[name]) {
+      setCode(EXAMPLES[name]);
+      setVariableSnapshot(null);
+      soundDown("Enter");
+    }
+  };
+
   return (
-    <div className="flex flex-col w-full max-w-7xl mx-auto gap-4">
-      {/* Top Navigation & Action Bar */}
-      <header className="flex flex-wrap items-center justify-between gap-4 px-5 py-3 rounded-2xl border border-neutral-800 bg-neutral-900/90 shadow-md backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/80">
+    <div className="flex flex-col w-full max-w-7xl mx-auto gap-3.5 select-text">
+      {/* Top Navigation & App Header (Hybrid macOS & Terminal Bar) */}
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-neutral-800 bg-[#0d0f12]/95 shadow-xl backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-            <Code className="w-5 h-5" />
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400">
+            <Code2 className="w-5 h-5" />
           </div>
-          <span className="font-bold text-base tracking-tight text-white">
-            Pseudocode Compiler
-          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-tight text-white font-mono">
+                Pseudocode Compiler
+              </span>
+              <span className="px-1.5 py-0.2 rounded bg-neutral-800 border border-neutral-700 text-neutral-300 text-[10px] font-mono">
+                v1.0
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
+              <span className="text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                client engine online
+              </span>
+              <span>•</span>
+              <span>Standard ITB / Alpro</span>
+            </div>
+          </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        {/* Global Controls */}
+        <div className="flex items-center gap-2">
           {/* Run / Stop Button */}
           {isRunning ? (
             <button
               type="button"
               onClick={stopExecution}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-medium text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-medium text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md transition-all cursor-pointer font-mono"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
               <span>Hentikan</span>
@@ -226,7 +322,7 @@ export function Workspace() {
               type="button"
               onClick={runCode}
               title="Jalankan pseudocode (Ctrl + Enter)"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-medium text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-medium text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all cursor-pointer font-mono"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Jalankan</span>
@@ -241,10 +337,10 @@ export function Workspace() {
               setIsCheatsheetOpen(true);
             }}
             title="Buka panduan sintaks pseudocode"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-mono font-medium transition-all cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span>Sintaks</span>
+            <span className="hidden sm:inline">Panduan</span>
           </button>
 
           {/* Sound Volume Control */}
@@ -259,30 +355,74 @@ export function Workspace() {
         </div>
       </header>
 
-      {/* Main Dual-Terminal Split */}
-      <main className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px] max-h-[75vh] w-full min-h-0">
-        {/* Left: Pseudocode Editor Terminal */}
+      {/* TOP PANE: Structured Code Editor with VS Code Syntax Highlighting */}
+      <section className="w-full h-[320px] min-h-[260px]">
         <PseudocodeEditor
           code={code}
           onChange={setCode}
           onRun={runCode}
+          isRunning={isRunning}
+          onStop={stopExecution}
           errorLine={errorLine}
           onKeyDownSound={soundDown}
           onKeyUpSound={soundUp}
+          onOpenAst={() => setIsAstOpen(true)}
+          onLoadExample={handleLoadExample}
+          lastExecutionMs={lastExecutionMs}
         />
+      </section>
 
-        {/* Right: Interactive Terminal Sandbox with in-terminal input & tabs */}
-        <InteractiveTerminal
-          entries={entries}
+      {/* BOTTOM PANE: Split Dual-Card Layout (Option 2 RESULTS + NOTES/NEXT) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 h-[340px] min-h-[280px] w-full">
+        {/* Left 7 Columns: RESULTS (Console Terminal & Kamus Symbol Table with Sparkbars) */}
+        <div className="lg:col-span-7 h-full min-h-0">
+          <ResultsPane
+            entries={entries}
+            isRunning={isRunning}
+            isWaitingInput={isWaitingInput}
+            onSendInput={handleSendInput}
+            onClear={() => setEntries([])}
+            inspectData={inspectData}
+            variableSnapshot={variableSnapshot}
+            lastExecutionMs={lastExecutionMs}
+            onKeyDownSound={soundDown}
+            onKeyUpSound={soundUp}
+          />
+        </div>
+
+        {/* Right 5 Columns: NOTES & NEXT (Diagnostics & Numbered Shortcut Actions) */}
+        <div className="lg:col-span-5 h-full min-h-0">
+          <DiagnosticsNotes
+            code={code}
+            inspectData={inspectData}
+            onLoadExample={handleLoadExample}
+            onOpenCheatsheet={() => setIsCheatsheetOpen(true)}
+            onClearConsole={() => setEntries([])}
+          />
+        </div>
+      </section>
+
+      {/* BOTTOM COMMAND / STDIN BAR (Option 2 Prompt Bar) */}
+      <section className="w-full">
+        <BottomCommandBar
           isRunning={isRunning}
           isWaitingInput={isWaitingInput}
           onSendInput={handleSendInput}
+          onRun={runCode}
           onClear={() => setEntries([])}
-          inspectData={inspectData}
+          onOpenCheatsheet={() => setIsCheatsheetOpen(true)}
+          onLoadExample={handleLoadExample}
           onKeyDownSound={soundDown}
           onKeyUpSound={soundUp}
         />
-      </main>
+      </section>
+
+      {/* AST Inspector Modal */}
+      <AstInspectorModal
+        isOpen={isAstOpen}
+        onClose={() => setIsAstOpen(false)}
+        ast={inspectData?.ast || null}
+      />
 
       {/* Cheatsheet Modal */}
       <SyntaxCheatsheetModal

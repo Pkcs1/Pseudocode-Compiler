@@ -1,6 +1,6 @@
 import { SemanticChecker } from "./checker";
 import { PseudoError } from "./errors";
-import { AsyncInputReader, Interpreter } from "./interpreter";
+import { AsyncInputReader, formatValue, Interpreter, UNINITIALIZED } from "./interpreter";
 import { normalizeSmartQuotes, tokenize } from "./lexer";
 import { parse } from "./parser";
 
@@ -12,11 +12,20 @@ export interface ExecutionErrorDetail {
   formatted: string;
 }
 
+export interface VariableSnapshotItem {
+  type: string;
+  value: string;
+  numericValue?: number;
+}
+
+export type VariableSnapshot = Record<string, VariableSnapshotItem>;
+
 export interface ExecutionCallbacks {
   onStdout: (text: string) => void;
   onNeedInput: () => void;
   onError: (error: ExecutionErrorDetail, durationMs: number) => void;
-  onExit: (code: number, durationMs: number) => void;
+  onExit: (code: number, durationMs: number, snapshot?: VariableSnapshot) => void;
+  onVariablesSnapshot?: (snapshot: VariableSnapshot) => void;
 }
 
 export interface ExecutionHandle {
@@ -34,8 +43,31 @@ export function executePseudocode(
 
   let isStopped = false;
   let interpreterInstance: Interpreter | null = null;
+
+  const getSnapshot = (): VariableSnapshot => {
+    if (!interpreterInstance) return {};
+    const snap: VariableSnapshot = {};
+    for (const [varName, rawVal] of interpreterInstance.env.entries()) {
+      const type = interpreterInstance.varTypes.get(varName) || "unknown";
+      if (rawVal === UNINITIALIZED) {
+        snap[varName] = { type, value: "(belum diisi)" };
+      } else {
+        const formatted = formatValue(rawVal, type);
+        const num =
+          typeof rawVal === "bigint"
+            ? Number(rawVal)
+            : typeof rawVal === "number"
+            ? rawVal
+            : undefined;
+        snap[varName] = { type, value: formatted, numericValue: num };
+      }
+    }
+    return snap;
+  };
+
   const reader = new AsyncInputReader(() => {
     if (!isStopped) {
+      callbacks.onVariablesSnapshot?.(getSnapshot());
       callbacks.onNeedInput();
     }
   });
@@ -69,7 +101,9 @@ export function executePseudocode(
 
       if (!isStopped) {
         const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
-        callbacks.onExit(0, Math.round(endTime - startTime));
+        const snap = getSnapshot();
+        callbacks.onVariablesSnapshot?.(snap);
+        callbacks.onExit(0, Math.round(endTime - startTime), snap);
       }
     } catch (err: unknown) {
       if (isStopped) return;
