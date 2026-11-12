@@ -8,17 +8,58 @@ import {
   Square,
   FileCode,
   ChevronDown,
+  CircleX,
+  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tokenizeLine, TOKEN_STYLE } from "@/lib/syntax-highlighter";
+import type { Diagnostic } from "@/lib/engine";
+
+export interface JumpRequest {
+  line: number;
+  col: number;
+  /** Changes on every request so jumping to the same spot twice still works. */
+  nonce: number;
+}
+
+const LINE_HEIGHT_PX = 24;
+
+/** Column (1-based) → visual offset in characters, expanding tabs (tabSize 4). */
+function visualOffset(lineText: string, col: number): number {
+  let vis = 0;
+  for (let i = 0; i < Math.min(col - 1, lineText.length); i++) {
+    vis = lineText[i] === "\t" ? (Math.floor(vis / 4) + 1) * 4 : vis + 1;
+  }
+  return vis + Math.max(0, col - 1 - lineText.length);
+}
+
+const DIAG_STYLE = {
+  error: {
+    lineBg: "bg-rose-500/[0.09] dark:bg-rose-500/[0.12]",
+    gutter: "text-rose-600 dark:text-rose-400",
+    message: "text-rose-600/90 dark:text-rose-400/90",
+    squiggle: "rgb(225 29 72)",
+  },
+  warning: {
+    lineBg: "bg-amber-400/[0.12] dark:bg-amber-400/[0.09]",
+    gutter: "text-amber-600 dark:text-amber-400",
+    message: "text-amber-700/90 dark:text-amber-400/90",
+    squiggle: "rgb(217 119 6)",
+  },
+} as const;
 
 interface PseudocodeEditorProps {
   code: string;
   onChange: (value: string) => void;
   onRun: () => void;
+  /** Ctrl/Cmd + Shift + Enter: run all test cases. */
+  onRunTests?: () => void;
   isRunning?: boolean;
   onStop?: () => void;
-  errorLine?: number | null;
+  /** Errors & warnings rendered inline (Error Lens style). */
+  diagnostics?: Diagnostic[];
+  /** Move the caret to a position (e.g. when a diagnostic is clicked). */
+  jumpTo?: JumpRequest | null;
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
   onLoadExample?: (name: string) => void;
@@ -37,9 +78,11 @@ export function PseudocodeEditor({
   code,
   onChange,
   onRun,
+  onRunTests,
   isRunning = false,
   onStop,
-  errorLine,
+  diagnostics = [],
+  jumpTo,
   onKeyDownSound,
   onKeyUpSound,
   onLoadExample,
@@ -54,6 +97,42 @@ export function PseudocodeEditor({
 
   const lines = useMemo(() => code.split("\n"), [code]);
   const lineCount = lines.length;
+
+  // Diagnostics grouped per line, most severe first (errors before warnings).
+  const diagsByLine = useMemo(() => {
+    const map = new Map<number, Diagnostic[]>();
+    for (const d of diagnostics) {
+      const list = map.get(d.line) ?? [];
+      list.push(d);
+      map.set(d.line, list);
+    }
+    for (const list of map.values()) {
+      list.sort(
+        (a, b) =>
+          (a.severity === "error" ? 0 : 1) - (b.severity === "error" ? 0 : 1) ||
+          a.col - b.col
+      );
+    }
+    return map;
+  }, [diagnostics]);
+
+  // Jump the caret to a requested diagnostic position.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!jumpTo || !textarea) return;
+    const all = textarea.value.split("\n");
+    const lineIdx = Math.min(Math.max(jumpTo.line, 1), all.length) - 1;
+    let offset = 0;
+    for (let i = 0; i < lineIdx; i++) offset += all[i].length + 1;
+    offset += Math.min(Math.max(jumpTo.col - 1, 0), all[lineIdx].length);
+    textarea.focus();
+    textarea.setSelectionRange(offset, offset);
+    textarea.scrollTop = Math.max(
+      0,
+      lineIdx * LINE_HEIGHT_PX - textarea.clientHeight / 2 + LINE_HEIGHT_PX
+    );
+    setCursorPos({ line: lineIdx + 1, col: jumpTo.col });
+  }, [jumpTo]);
 
   // Sync scrolling between textarea, gutter, and highlighted code overlay
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -82,6 +161,12 @@ export function PseudocodeEditor({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!e.repeat) {
       onKeyDownSound?.(e.key);
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "Enter" && onRunTests) {
+      e.preventDefault();
+      onRunTests();
+      return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -169,7 +254,7 @@ export function PseudocodeEditor({
   }, [isExampleMenuOpen]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 rounded-2xl border border-[#e4e4df] bg-[#ffffff] shadow-md dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
+    <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
       {/* Top Window Header (Option 2 Window Header Style with Light Palette & Dark Toggle) */}
       <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none gap-2">
         <div className="flex items-center gap-3">
@@ -320,19 +405,25 @@ export function PseudocodeEditor({
         >
           {Array.from({ length: lineCount }).map((_, i) => {
             const lineNum = i + 1;
-            const isError = errorLine === lineNum;
+            const lineDiags = diagsByLine.get(lineNum);
+            const top = lineDiags?.[0];
+            const style = top ? DIAG_STYLE[top.severity] : null;
             const isCurrent = cursorPos.line === lineNum;
             return (
               <div
                 key={lineNum}
+                title={lineDiags?.map((d) => `• ${d.message}`).join("\n")}
                 className={cn(
                   "h-6 leading-6 flex items-center justify-end relative transition-colors",
-                  isError && "text-rose-600 font-bold bg-rose-500/15 rounded-l dark:text-rose-400 dark:bg-rose-500/20",
-                  isCurrent && !isError && "text-[#0f172a] font-semibold dark:text-neutral-300"
+                  style && cn(style.gutter, style.lineBg, "font-bold"),
+                  isCurrent && !style && "text-[#0f172a] font-semibold dark:text-neutral-300"
                 )}
               >
-                {isError && (
-                  <span className="absolute -left-1 top-2 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                {top?.severity === "error" && (
+                  <CircleX className="absolute left-1 w-3 h-3" strokeWidth={2.5} />
+                )}
+                {top?.severity === "warning" && (
+                  <TriangleAlert className="absolute left-1 w-3 h-3" strokeWidth={2.5} />
                 )}
                 {lineNum}
               </div>
@@ -352,7 +443,9 @@ export function PseudocodeEditor({
           >
             {lines.map((line, idx) => {
               const lineNum = idx + 1;
-              const isError = errorLine === lineNum;
+              const lineDiags = diagsByLine.get(lineNum);
+              const top = lineDiags?.[0];
+              const diagStyle = top ? DIAG_STYLE[top.severity] : null;
               const isCurrent = cursorPos.line === lineNum;
               const tokens = tokenizeLine(line);
 
@@ -366,10 +459,33 @@ export function PseudocodeEditor({
                   key={idx}
                   className={cn(
                     "h-6 leading-6 whitespace-pre relative flex items-center",
-                    isError && "bg-rose-500/15 rounded-sm",
-                    isCurrent && !isError && "bg-[#f8f8f6] dark:bg-neutral-800/20"
+                    diagStyle && cn(diagStyle.lineBg, "rounded-sm"),
+                    isCurrent && !diagStyle && "bg-[#f8f8f6] dark:bg-neutral-800/20"
                   )}
                 >
+                  {/* Squiggly underline under each problem's location */}
+                  {lineDiags?.map((d, dIdx) => {
+                    const start = visualOffset(line, d.col);
+                    const text =
+                      d.length > 0 ? line.slice(d.col - 1, d.col - 1 + d.length) : "";
+                    return (
+                      <span
+                        key={`sq-${dIdx}`}
+                        className="absolute top-0 h-6 leading-6 text-transparent pointer-events-none z-20"
+                        style={{
+                          left: `${start}ch`,
+                          textDecorationLine: "underline",
+                          textDecorationStyle: "wavy",
+                          textDecorationColor: DIAG_STYLE[d.severity].squiggle,
+                          textDecorationSkipInk: "none",
+                          textUnderlineOffset: "4px",
+                        }}
+                      >
+                        {text.replace(/\t/g, "    ") || "\u00a0\u00a0"}
+                      </span>
+                    );
+                  })}
+
                   {/* Subtle Rainbow Indent Guide Lines */}
                   {indentCount > 0 && (
                     <div className="absolute top-0 bottom-0 left-0 flex pointer-events-none">
@@ -412,6 +528,23 @@ export function PseudocodeEditor({
                       <span className="opacity-0"> </span>
                     )}
                   </span>
+
+                  {/* Inline diagnostic message (Error Lens style) */}
+                  {top && diagStyle && (
+                    <span
+                      className={cn(
+                        "relative z-10 ml-10 text-[12px] italic font-medium tracking-tight",
+                        diagStyle.message
+                      )}
+                    >
+                      {top.message}
+                      {lineDiags!.length > 1 && (
+                        <span className="not-italic ml-2 px-1 rounded bg-current/10 text-[10px] font-semibold">
+                          +{lineDiags!.length - 1}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -456,6 +589,14 @@ export function PseudocodeEditor({
             Ctrl + Enter
           </kbd>
           <span>Jalankan</span>
+          {onRunTests && (
+            <>
+              <kbd className="ml-2 hidden sm:inline px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#334155] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px]">
+                Ctrl + Shift + Enter
+              </kbd>
+              <span className="hidden sm:inline">Tes</span>
+            </>
+          )}
         </div>
       </div>
     </div>

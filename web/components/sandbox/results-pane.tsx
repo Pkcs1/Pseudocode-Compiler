@@ -9,10 +9,15 @@ import {
   CheckCircle2,
   Loader2,
   CornerDownLeft,
+  CircleX,
+  TriangleAlert,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InspectResult } from "@/lib/runner";
-import { VariableSnapshot } from "@/lib/engine";
+import { VariableSnapshot, Diagnostic } from "@/lib/engine";
+
+type ResultsTab = "problems" | "console" | "kamus";
 
 export interface TerminalEntry {
   id: string;
@@ -40,7 +45,19 @@ interface ResultsPaneProps {
   lastExecutionMs?: number | null;
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
+  /** Errors & warnings from the compiler, listed in the "Masalah" tab. */
+  diagnostics: Diagnostic[];
+  /** Move the editor caret to a problem's position. */
+  onJumpTo: (line: number, col: number) => void;
 }
+
+const TAB_CLASS = (active: boolean) =>
+  cn(
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+    active
+      ? "bg-[#ffffff] text-[#0f172a] shadow-xs dark:bg-neutral-800 dark:text-white"
+      : "text-[#64748b] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:text-neutral-200"
+  );
 
 export function ResultsPane({
   entries,
@@ -53,8 +70,12 @@ export function ResultsPane({
   lastExecutionMs,
   onKeyDownSound,
   onKeyUpSound,
+  diagnostics,
+  onJumpTo,
 }: ResultsPaneProps) {
-  const [activeTab, setActiveTab] = useState<"console" | "kamus">("console");
+  const [activeTab, setActiveTab] = useState<ResultsTab>("console");
+  const errorCount = diagnostics.filter((d) => d.severity === "error").length;
+  const warningCount = diagnostics.length - errorCount;
   const [inlineInput, setInlineInput] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -106,7 +127,7 @@ export function ResultsPane({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 rounded-2xl border border-[#e4e4df] bg-[#ffffff] shadow-md dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-xl overflow-hidden font-mono transition-colors">
+    <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-xl overflow-hidden font-mono transition-colors">
       {/* Pane Header (Option 2 RESULTS bar) */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none">
         <div className="flex items-center gap-3">
@@ -119,6 +140,8 @@ export function ResultsPane({
             <span className="text-[11px] text-[#64748b] dark:text-neutral-400">
               {activeTab === "console"
                 ? `${entries.length} baris log`
+                : activeTab === "problems"
+                ? `${diagnostics.length} masalah`
                 : `${totalVars} variabel`}
             </span>
             {lastExecutionMs !== null && lastExecutionMs !== undefined && (
@@ -135,27 +158,38 @@ export function ResultsPane({
           <div className="flex items-center p-0.5 rounded-lg bg-[#f1f1ee] border border-[#e2e2dc] dark:bg-neutral-950/80 dark:border-neutral-800 text-xs ml-2">
             <button
               type="button"
-              onClick={() => setActiveTab("console")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
-                activeTab === "console"
-                  ? "bg-[#ffffff] text-[#0f172a] shadow-xs dark:bg-neutral-800 dark:text-white"
-                  : "text-[#64748b] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:text-neutral-200"
+              onClick={() => setActiveTab("problems")}
+              className={TAB_CLASS(activeTab === "problems")}
+            >
+              <ListChecks className="w-3 h-3 text-[#64748b] dark:text-neutral-400" />
+              <span>Masalah</span>
+              {errorCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                  <CircleX className="w-2.5 h-2.5" strokeWidth={2.5} />
+                  {errorCount}
+                </span>
               )}
+              {warningCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  <TriangleAlert className="w-2.5 h-2.5" strokeWidth={2.5} />
+                  {warningCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("console")}
+              className={TAB_CLASS(activeTab === "console")}
             >
               <TerminalIcon className="w-3 h-3 text-[#16a34a] dark:text-emerald-400" />
-              <span>Konsol</span>
+              <span>Terminal</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("kamus")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
-                activeTab === "kamus"
-                  ? "bg-[#ffffff] text-[#0f172a] shadow-xs dark:bg-neutral-800 dark:text-white"
-                  : "text-[#64748b] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:text-neutral-200"
-              )}
+              className={TAB_CLASS(activeTab === "kamus")}
             >
               <TableProperties className="w-3 h-3 text-[#5b45ff] dark:text-purple-400" />
               <span>Tabel Kamus</span>
@@ -192,6 +226,53 @@ export function ResultsPane({
 
       {/* Pane Content */}
       <div className="relative flex-1 min-h-0 overflow-hidden text-xs bg-[#ffffff] dark:bg-transparent">
+        {/* VIEW 0: PROBLEMS (VS Code style) — click a row to jump to it */}
+        {activeTab === "problems" && (
+          <div className="h-full min-h-0 overflow-y-auto py-1.5">
+            {diagnostics.length === 0 ? (
+              <div className="px-4 py-3 text-[#64748b] dark:text-neutral-500 text-xs">
+                Tidak ada masalah yang terdeteksi.
+              </div>
+            ) : (
+              <ul className="list-none px-2 space-y-1">
+                {diagnostics.map((d, idx) => {
+                  const isError = d.severity === "error";
+                  return (
+                    <li key={`${d.line}:${d.col}:${idx}`}>
+                      <button
+                        type="button"
+                        onClick={() => onJumpTo(d.line, d.col)}
+                        title="Klik untuk menuju baris ini di editor"
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-md flex items-start gap-2 transition-colors cursor-pointer",
+                          isError
+                            ? "bg-rose-500/15 hover:bg-rose-500/25"
+                            : "bg-amber-500/15 hover:bg-amber-500/25"
+                        )}
+                      >
+                        {isError ? (
+                          <CircleX className="w-3.5 h-3.5 mt-0.5 shrink-0 text-rose-600 dark:text-rose-400" strokeWidth={2.5} />
+                        ) : (
+                          <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={2.5} />
+                        )}
+                        <span className="flex-1 min-w-0 leading-5 text-[#0f172a] dark:text-neutral-200">
+                          {d.message}
+                          <span className="ml-2 text-[11px] text-[#94a3b8] dark:text-neutral-500">
+                            {d.category}
+                          </span>
+                        </span>
+                        <span className="shrink-0 leading-5 text-[11px] text-[#94a3b8] dark:text-neutral-500 tabular-nums">
+                          [Baris {d.line}, Kol {d.col}]
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* VIEW 1: TERMINAL CONSOLE */}
         {activeTab === "console" && (
           <div

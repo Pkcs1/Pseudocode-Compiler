@@ -6,3 +6,4 @@ export * from "./checker";
 export * from "./interpreter";
 export * from "./inspect";
 export * from "./runner";
+export * from "./lint";

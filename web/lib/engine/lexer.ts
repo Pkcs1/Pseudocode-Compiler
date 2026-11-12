@@ -1,4 +1,4 @@
-import { syntaxError } from "./errors";
+import { PseudoError, syntaxError } from "./errors";
 
 export const KEYWORDS: Record<string, string> = {
   program: "PROGRAM",
@@ -83,10 +83,22 @@ export function normalizeSmartQuotes(source: string): string {
     .replace(/\uf0df/g, "<-");
 }
 
-export function tokenize(source: string): Token[] {
+/**
+ * Tokenize source code.
+ *
+ * When `errors` is provided the lexer runs in *recovery mode*: lexical errors
+ * are pushed into the array and scanning continues, so editors can show every
+ * problem at once. Without it, the first error is thrown (used by the runner).
+ */
+export function tokenize(source: string, errors?: PseudoError[]): Token[] {
   const normalized = normalizeSmartQuotes(source);
   const lines = normalized.split(/\r?\n/);
   const tokens: Token[] = [];
+
+  function report(err: PseudoError): void {
+    if (!errors) throw err;
+    errors.push(err);
+  }
 
   let pos = 0;
   const length = normalized.length;
@@ -155,12 +167,15 @@ export function tokenize(source: string): Token[] {
         pos++;
       }
       if (pos >= length) {
-        throw syntaxError(
-          "komentar '{ ... }' tidak ditutup dengan tanda '}'.",
-          startLine,
-          startCol,
-          currentLineText(startLine)
+        report(
+          syntaxError(
+            "komentar '{ ... }' tidak ditutup dengan tanda '}'.",
+            startLine,
+            startCol,
+            currentLineText(startLine)
+          )
         );
+        break;
       }
       pos++;
       col++;
@@ -201,15 +216,18 @@ export function tokenize(source: string): Token[] {
       }
 
       if (pos >= length || normalized[pos] !== '"') {
-        throw syntaxError(
-          'string tidak ditutup dengan tanda petik dua (").',
-          line,
-          startCol,
-          currentLineText(line)
+        report(
+          syntaxError(
+            'string tidak ditutup dengan tanda petik dua (").',
+            line,
+            startCol,
+            currentLineText(line)
+          )
         );
+      } else {
+        pos++;
+        col++;
       }
-      pos++;
-      col++;
       tokens.push({
         type: "STRING_LIT",
         value: chars.join(""),
@@ -252,28 +270,33 @@ export function tokenize(source: string): Token[] {
         col++;
       }
 
-      if (pos >= length || normalized[pos] !== "'") {
-        throw syntaxError(
-          "karakter (char) tidak ditutup dengan tanda petik tunggal (').",
-          line,
-          startCol,
-          currentLineText(line)
-        );
-      }
-      pos++;
-      col++;
       const content = charBuf.join("");
-      if (content.length !== 1) {
-        throw syntaxError(
-          `literal char harus berisi tepat 1 karakter, bukan '${content}'.`,
-          line,
-          startCol,
-          currentLineText(line)
+      if (pos >= length || normalized[pos] !== "'") {
+        report(
+          syntaxError(
+            "karakter (char) tidak ditutup dengan tanda petik tunggal (').",
+            line,
+            startCol,
+            currentLineText(line)
+          )
         );
+      } else {
+        pos++;
+        col++;
+        if (content.length !== 1) {
+          report(
+            syntaxError(
+              `literal char harus berisi tepat 1 karakter, bukan '${content}'.`,
+              line,
+              startCol,
+              currentLineText(line)
+            )
+          );
+        }
       }
       tokens.push({
         type: "CHAR_LIT",
-        value: content.charCodeAt(0),
+        value: content.length > 0 ? content.charCodeAt(0) : 0,
         line,
         col: startCol,
       });
@@ -307,12 +330,22 @@ export function tokenize(source: string): Token[] {
             col: startCol,
           });
         } else {
-          throw syntaxError(
-            `angka desimal '${numStr}.' tidak valid (harus ada angka di belakang titik).`,
-            line,
-            startCol,
-            currentLineText(line)
+          report(
+            syntaxError(
+              `angka desimal '${numStr}.' tidak valid (harus ada angka di belakang titik).`,
+              line,
+              startCol,
+              currentLineText(line)
+            )
           );
+          pos++;
+          col++;
+          tokens.push({
+            type: "REAL_LIT",
+            value: parseFloat(numStr),
+            line,
+            col: startCol,
+          });
         }
       } else {
         tokens.push({
@@ -384,12 +417,16 @@ export function tokenize(source: string): Token[] {
     }
 
     // 9. Unknown character
-    throw syntaxError(
-      `karakter '${ch}' tidak dikenal di dalam pseudocode.`,
-      line,
-      col,
-      currentLineText(line)
+    report(
+      syntaxError(
+        `karakter '${ch}' tidak dikenal di dalam pseudocode.`,
+        line,
+        col,
+        currentLineText(line)
+      )
     );
+    pos++;
+    col++;
   }
 
   let eofLine = 1;

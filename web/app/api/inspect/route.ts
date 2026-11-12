@@ -14,6 +14,7 @@ export async function POST(req: Request) {
         tokens: [],
         ast: null,
         kamus: { aliases: {}, structs: {}, constants: [], variables: {} },
+        diagnostics: [],
         error: {
           category: "kesalahan server",
           message: err instanceof Error ? err.message : String(err),

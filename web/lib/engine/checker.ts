@@ -21,7 +21,17 @@ import {
   VarExpr,
   WhileStmt,
 } from "./ast";
-import { semanticError } from "./errors";
+import { PseudoError, semanticError } from "./errors";
+import { RECOVERED_TYPE } from "./parser";
+
+/** Type of anything that couldn't be determined (after an earlier error). */
+const UNKNOWN = RECOVERED_TYPE;
+
+export interface CheckerWarning {
+  message: string;
+  line: number;
+  col: number;
+}
 
 const VALID_BASE_TYPES = new Set([
   "integer",
@@ -40,9 +50,16 @@ export class SemanticChecker {
   structs: Map<string, Record<string, string>>;
   variables: Map<string, string>;
   constants: Set<string>;
+  /** When true, errors are collected in `errors` instead of being thrown. */
+  collectErrors: boolean;
+  errors: PseudoError[];
+  warnings: CheckerWarning[];
 
-  constructor(sourceLines: string[]) {
+  constructor(sourceLines: string[], options: { collectErrors?: boolean } = {}) {
     this.sourceLines = sourceLines;
+    this.collectErrors = options.collectErrors ?? false;
+    this.errors = [];
+    this.warnings = [];
     this.aliases = new Map();
     this.rawStructs = new Map();
     this.structs = new Map();
@@ -57,41 +74,62 @@ export class SemanticChecker {
     return "";
   }
 
+  /** Record an error (collect mode) or rethrow it (default). */
+  _record(err: unknown): void {
+    if (!this.collectErrors || !(err instanceof PseudoError)) throw err;
+    this.errors.push(err);
+  }
+
+  /** Run one independent check; in collect mode an error doesn't stop the others. */
+  _guard(fn: () => void): void {
+    try {
+      fn();
+    } catch (err) {
+      this._record(err);
+    }
+  }
+
+  _warn(message: string, line: number, col: number): void {
+    this.warnings.push({ message, line, col });
+  }
+
   checkProgram(program: Program): Record<string, string> {
     // Tahap 1: Kumpulkan tipe (Alias & Struct)
     for (const decl of program.declarations) {
       if (decl._type === "AliasDecl" || decl._type === "StructDecl") {
-        this.registerTypeDecl(decl);
+        this._guard(() => this.registerTypeDecl(decl));
       }
     }
 
     // Tahap 2: Validasi isi Alias & Struct
     for (const [aliasName, aliasDecl] of this.aliases.entries()) {
-      this.resolveType(aliasName, aliasDecl.line, aliasDecl.targetCol);
+      this._guard(() =>
+        this.resolveType(aliasName, aliasDecl.line, aliasDecl.targetCol)
+      );
     }
 
     for (const [structName, structDecl] of this.rawStructs.entries()) {
-      this.resolveStructFields(structName, structDecl);
+      this._guard(() => this.resolveStructFields(structName, structDecl));
     }
 
     // Pastikan tidak ada rekursif struct
     for (const [structName, structDecl] of this.rawStructs.entries()) {
-      this.checkRecursiveStruct(structName, structDecl, new Set());
+      this._guard(() =>
+        this.checkRecursiveStruct(structName, structDecl, new Set())
+      );
     }
 
     // Tahap 3: Konstanta dan Variabel
     for (const decl of program.declarations) {
       if (decl._type === "ConstDecl") {
-        this.checkConstDecl(decl);
+        this._guard(() => this.checkConstDecl(decl));
       } else if (decl._type === "VarDecl") {
-        this.checkVarDecl(decl);
+        this._guard(() => this.checkVarDecl(decl));
       }
     }
 
     // Tahap 4: Statement di algoritma
-    for (const stmt of program.statements) {
-      this.checkStatement(stmt);
-    }
+    this._checkBlock(program.statements);
 
     const res: Record<string, string> = {};
     for (const [k, v] of this.variables.entries()) {
@@ -123,6 +161,7 @@ export class SemanticChecker {
   }
 
   resolveType(typeName: string, line: number, col: number): string {
+    if (typeName === UNKNOWN) return UNKNOWN;
     const visited = new Set<string>();
     let curr = typeName;
     while (this.aliases.has(curr)) {
@@ -150,10 +189,21 @@ export class SemanticChecker {
     );
   }
 
+  /** resolveType(), but in collect mode an unknown type becomes UNKNOWN. */
+  _resolveTypeSafe(typeName: string, line: number, col: number): string {
+    try {
+      return this.resolveType(typeName, line, col);
+    } catch (err) {
+      this._record(err);
+      return UNKNOWN;
+    }
+  }
+
   resolveStructFields(structName: string, decl: StructDecl): void {
     const fieldMap: Record<string, string> = {};
+    this.structs.set(structName, fieldMap);
     for (const fdecl of decl.fields) {
-      const resolvedFieldType = this.resolveType(
+      const resolvedFieldType = this._resolveTypeSafe(
         fdecl.typeName,
         fdecl.line,
         fdecl.typeCol
@@ -163,17 +213,19 @@ export class SemanticChecker {
         const fname = fdecl.names[i];
         const fcol = cols[i];
         if (fieldMap[fname] !== undefined) {
-          throw semanticError(
-            `field '${fname}' sudah pernah dideklarasikan di dalam struct '${structName}'.`,
-            fdecl.line,
-            fcol,
-            this._lineText(fdecl.line)
+          this._record(
+            semanticError(
+              `field '${fname}' sudah pernah dideklarasikan di dalam struct '${structName}'.`,
+              fdecl.line,
+              fcol,
+              this._lineText(fdecl.line)
+            )
           );
+          continue;
         }
         fieldMap[fname] = resolvedFieldType;
       }
     }
-    this.structs.set(structName, fieldMap);
   }
 
   checkRecursiveStruct(
@@ -212,12 +264,15 @@ export class SemanticChecker {
         this._lineText(decl.line)
       );
     }
-    const resolvedType = this.resolveType(
+    const resolvedType = this._resolveTypeSafe(
       decl.typeName,
       decl.line,
       decl.typeCol
     );
-    if (!VALID_BASE_TYPES.has(resolvedType)) {
+    // Register first so later uses don't also report "not declared".
+    this.variables.set(decl.name, resolvedType);
+    this.constants.add(decl.name);
+    if (resolvedType !== UNKNOWN && !VALID_BASE_TYPES.has(resolvedType)) {
       throw semanticError(
         `konstanta '${decl.name}' harus bertipe dasar (integer/real/string/boolean/char), bukan '${decl.typeName}'.`,
         decl.line,
@@ -235,8 +290,6 @@ export class SemanticChecker {
         this._lineText(decl.line)
       );
     }
-    this.variables.set(decl.name, resolvedType);
-    this.constants.add(decl.name);
   }
 
   _ensureConstExpr(expr: Expr, constName: string): void {
@@ -267,7 +320,7 @@ export class SemanticChecker {
   }
 
   checkVarDecl(decl: VarDecl): void {
-    const resolvedType = this.resolveType(
+    const resolvedType = this._resolveTypeSafe(
       decl.typeName,
       decl.line,
       decl.typeCol
@@ -277,18 +330,22 @@ export class SemanticChecker {
       const name = decl.names[i];
       const nameCol = cols[i];
       if (this.variables.has(name)) {
-        throw semanticError(
-          `variabel '${name}' sudah pernah dideklarasikan di kamus.`,
-          decl.line,
-          nameCol,
-          this._lineText(decl.line)
+        this._record(
+          semanticError(
+            `variabel '${name}' sudah pernah dideklarasikan di kamus.`,
+            decl.line,
+            nameCol,
+            this._lineText(decl.line)
+          )
         );
+        continue;
       }
       this.variables.set(name, resolvedType);
     }
   }
 
   isAssignCompatible(targetType: string, valueType: string): boolean {
+    if (targetType === UNKNOWN || valueType === UNKNOWN) return true;
     if (targetType === valueType) return true;
     if (targetType === "real" && valueType === "integer") return true;
     if (INT_COMPATIBLE.has(targetType) && INT_COMPATIBLE.has(valueType)) {
@@ -316,13 +373,13 @@ export class SemanticChecker {
 
   _checkBlock(stmts: Stmt[]): void {
     for (const bodyStmt of stmts) {
-      this.checkStatement(bodyStmt);
+      this._guard(() => this.checkStatement(bodyStmt));
     }
   }
 
   _checkBooleanCondition(cond: Expr, label: string): void {
     const condType = this.checkExpr(cond);
-    if (condType !== "boolean") {
+    if (condType !== "boolean" && condType !== UNKNOWN) {
       throw semanticError(
         `kondisi pada ${label} harus bertipe 'boolean', bukan '${condType}'.`,
         cond.line,
@@ -367,7 +424,7 @@ export class SemanticChecker {
         );
       }
       const targetType = this.checkExpr(target);
-      if (!VALID_BASE_TYPES.has(targetType)) {
+      if (targetType !== UNKNOWN && !VALID_BASE_TYPES.has(targetType)) {
         const targetLabel = this._formatLvalueName(target);
         throw semanticError(
           `instruksi 'input(...)' tidak dapat membaca langsung ke struct '${targetLabel}' (sebutkan field-nya, misalnya '${targetLabel}.nama_field').`,
@@ -382,7 +439,7 @@ export class SemanticChecker {
   checkOutput(stmt: OutputStmt): void {
     for (const expr of stmt.values) {
       const valType = this.checkExpr(expr);
-      if (!VALID_BASE_TYPES.has(valType)) {
+      if (valType !== UNKNOWN && !VALID_BASE_TYPES.has(valType)) {
         throw semanticError(
           `instruksi 'output(...)' tidak dapat mencetak struct bertipe '${valType}' secara langsung (cetak field-nya satu per satu).`,
           expr.line,
@@ -394,6 +451,11 @@ export class SemanticChecker {
   }
 
   checkFor(stmt: ForStmt): void {
+    if (stmt.varName === UNKNOWN) {
+      // Header could not be parsed; the syntax error is already reported.
+      this._checkBlock(stmt.body);
+      return;
+    }
     if (!this.variables.has(stmt.varName)) {
       throw semanticError(
         `variabel pencacah '${stmt.varName}' pada perulangan 'for' belum dideklarasikan di kamus.`,
@@ -411,7 +473,7 @@ export class SemanticChecker {
       );
     }
     const varType = this.variables.get(stmt.varName)!;
-    if (varType !== "integer") {
+    if (varType !== "integer" && varType !== UNKNOWN) {
       throw semanticError(
         `variabel pencacah '${stmt.varName}' pada 'for' harus bertipe 'integer', bukan '${varType}'.`,
         stmt.line,
@@ -421,7 +483,7 @@ export class SemanticChecker {
     }
 
     const startType = this.checkExpr(stmt.startExpr);
-    if (startType !== "integer") {
+    if (startType !== "integer" && startType !== UNKNOWN) {
       throw semanticError(
         `nilai awal (init) pada perulangan 'for' harus bertipe 'integer', bukan '${startType}'.`,
         stmt.startExpr.line,
@@ -431,7 +493,7 @@ export class SemanticChecker {
     }
 
     const endType = this.checkExpr(stmt.endExpr);
-    if (endType !== "integer") {
+    if (endType !== "integer" && endType !== UNKNOWN) {
       throw semanticError(
         `nilai akhir (end) pada perulangan 'for' harus bertipe 'integer', bukan '${endType}'.`,
         stmt.endExpr.line,
@@ -442,7 +504,7 @@ export class SemanticChecker {
 
     if (stmt.stepExpr) {
       const stepType = this.checkExpr(stmt.stepExpr);
-      if (stepType !== "integer") {
+      if (stepType !== "integer" && stepType !== UNKNOWN) {
         throw semanticError(
           `nilai langkah (step) pada perulangan 'for' harus bertipe 'integer', bukan '${stepType}'.`,
           stmt.stepExpr.line,
@@ -500,6 +562,7 @@ export class SemanticChecker {
 
   checkFieldAccess(expr: FieldAccessExpr): string {
     const objType = this.checkExpr(expr.obj);
+    if (objType === UNKNOWN) return UNKNOWN;
     if (!this.structs.has(objType)) {
       throw semanticError(
         `'${this._formatLvalueName(expr.obj)}' bertipe '${objType}' (bukan struct), sehingga tidak memiliki field '${expr.fieldName}'.`,
@@ -535,7 +598,7 @@ export class SemanticChecker {
 
     if (expr._type === "LenExpr") {
       const argType = this.checkExpr(expr.arg);
-      if (argType !== "string") {
+      if (argType !== "string" && argType !== UNKNOWN) {
         throw semanticError(
           `fungsi 'len(...)' hanya menerima argumen bertipe 'string', tetapi ditemukan '${argType}'.`,
           expr.line,
@@ -548,6 +611,9 @@ export class SemanticChecker {
 
     if (expr._type === "UnaryExpr") {
       const operandType = this.checkExpr(expr.operand);
+      if (operandType === UNKNOWN) {
+        return expr.op === "not" ? "boolean" : UNKNOWN;
+      }
       if (expr.op === "not") {
         if (operandType !== "boolean") {
           throw semanticError(
@@ -575,6 +641,14 @@ export class SemanticChecker {
       const leftType = this.checkExpr(expr.left);
       const rightType = this.checkExpr(expr.right);
       const op = expr.op;
+
+      if (leftType === UNKNOWN || rightType === UNKNOWN) {
+        if (["and", "or", "<", "<=", ">", ">=", "==", "!="].includes(op)) {
+          return "boolean";
+        }
+        if (op === "/") return "real";
+        return UNKNOWN;
+      }
 
       // 1. Logika and, or
       if (op === "and" || op === "or") {
@@ -653,6 +727,13 @@ export class SemanticChecker {
       // 6. <, <=, >, >=, ==, !=
       if (["<", "<=", ">", ">=", "==", "!="].includes(op)) {
         if (NUMERIC_TYPES.has(leftType) && NUMERIC_TYPES.has(rightType)) {
+          if ((op === "==" || op === "!=") && (leftType === "real" || rightType === "real")) {
+            this._warn(
+              `membandingkan bilangan real dengan '${op}' bisa tidak akurat karena pembulatan; pertimbangkan selisih kecil, misalnya |a - b| < 0.0001.`,
+              expr.line,
+              expr.col
+            );
+          }
           return "boolean";
         }
         if (leftType === "string" && rightType === "string") {
