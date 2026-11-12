@@ -26,11 +26,11 @@ interface PseudocodeEditorProps {
 }
 
 const RAINBOW_INDENTS = [
-  { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.03]" },
-  { border: "border-sky-500/30", bg: "bg-sky-500/[0.03]" },
-  { border: "border-purple-500/30", bg: "bg-purple-500/[0.03]" },
-  { border: "border-amber-500/30", bg: "bg-amber-500/[0.03]" },
-  { border: "border-rose-500/30", bg: "bg-rose-500/[0.03]" },
+  { border: "border-indigo-500/30 dark:border-emerald-500/30", bg: "bg-indigo-500/[0.03] dark:bg-emerald-500/[0.03]" },
+  { border: "border-teal-500/30 dark:border-sky-500/30", bg: "bg-teal-500/[0.03] dark:bg-sky-500/[0.03]" },
+  { border: "border-purple-500/30 dark:border-purple-500/30", bg: "bg-purple-500/[0.03] dark:bg-purple-500/[0.03]" },
+  { border: "border-amber-500/30 dark:border-amber-500/30", bg: "bg-amber-500/[0.03] dark:bg-amber-500/[0.03]" },
+  { border: "border-rose-500/30 dark:border-rose-500/30", bg: "bg-rose-500/[0.03] dark:bg-rose-500/[0.03]" },
 ];
 
 export function PseudocodeEditor({
@@ -169,38 +169,38 @@ export function PseudocodeEditor({
   }, [isExampleMenuOpen]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 rounded-2xl border border-neutral-800 bg-[#0d0f12] shadow-2xl overflow-hidden transition-colors">
-      {/* Top Window Header (Option 2 Window Header Style with Option 1 Dark Aesthetic) */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-neutral-800/90 bg-[#12151b] select-none gap-2">
+    <div className="flex flex-col h-full min-h-0 rounded-2xl border border-[#e4e4df] bg-[#ffffff] shadow-md dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
+      {/* Top Window Header (Option 2 Window Header Style with Light Palette & Dark Toggle) */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none gap-2">
         <div className="flex items-center gap-3">
           {/* macOS Traffic Lights */}
           <div className="flex items-center gap-1.5 mr-1">
-            <span className="w-3 h-3 rounded-full bg-red-500/80 border border-red-600/40 inline-block" />
-            <span className="w-3 h-3 rounded-full bg-amber-500/80 border border-amber-600/40 inline-block" />
-            <span className="w-3 h-3 rounded-full bg-emerald-500/80 border border-emerald-600/40 inline-block" />
+            <span className="w-3 h-3 rounded-full bg-[#ff5f56] inline-block" />
+            <span className="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block" />
+            <span className="w-3 h-3 rounded-full bg-[#27c93f] inline-block" />
           </div>
 
           {/* Badges */}
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-md bg-purple-500/20 border border-purple-500/30 text-purple-300 font-mono text-[11px] font-semibold">
+            <span className="px-2 py-0.5 rounded-md bg-[#5b45ff] text-white font-mono text-[11px] font-bold shadow-xs dark:bg-purple-500/20 dark:border dark:border-purple-500/30 dark:text-purple-300">
               KODE PSEUDOCODE
             </span>
-            <span className="text-neutral-400 font-mono text-xs hidden sm:inline-flex items-center gap-1.5">
+            <span className="text-[#64748b] dark:text-neutral-400 font-mono text-xs hidden sm:inline-flex items-center gap-1.5">
               <span>program.pseudo</span>
-              <span className="text-neutral-600">•</span>
-              <span className="text-emerald-400/80">UTF-8</span>
+              <span className="text-[#cbd5e1] dark:text-neutral-600">•</span>
+              <span className="text-[#16a34a] dark:text-emerald-400/80">UTF-8</span>
             </span>
           </div>
         </div>
 
-        {/* Action Controls / Toolbar (like in Image 2) */}
+        {/* Action Controls / Toolbar (Option 2 Lavender Pills Style) */}
         <div className="flex items-center gap-2">
           {/* Run / Stop Button */}
           {isRunning ? (
             <button
               type="button"
               onClick={onStop}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-rose-600/90 hover:bg-rose-500 text-white shadow-sm transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all cursor-pointer font-mono"
             >
               <Square className="w-3 h-3 fill-current" />
               <span>Hentikan</span>
@@ -210,19 +210,19 @@ export function PseudocodeEditor({
               type="button"
               onClick={onRun}
               title="Jalankan kode pseudocode (Ctrl + Enter)"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer font-mono"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-xs dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
             >
               <Play className="w-3 h-3 fill-current" />
               <span>Jalankan</span>
               {lastExecutionMs !== null && lastExecutionMs !== undefined && (
-                <span className="ml-1 text-[10px] text-emerald-200 bg-emerald-700/60 px-1 rounded">
+                <span className="ml-1 text-[10px] text-[#ede9fe] bg-[#4338ca] dark:bg-emerald-700/60 dark:text-emerald-200 px-1 rounded">
                   {lastExecutionMs}ms
                 </span>
               )}
             </button>
           )}
 
-          {/* Example Loader Dropdown */}
+          {/* Example Loader Dropdown (Lavender action pill) */}
           {onLoadExample && (
             <div className="relative">
               <button
@@ -231,25 +231,25 @@ export function PseudocodeEditor({
                   e.stopPropagation();
                   setIsExampleMenuOpen(!isExampleMenuOpen);
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#ddd6fe] bg-[#ede9fe] text-[#4f46e5] hover:bg-[#ddd6fe] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
               >
-                <FileCode className="w-3 h-3 text-sky-400" />
+                <FileCode className="w-3 h-3 text-[#5b45ff] dark:text-sky-400" />
                 <span>Contoh</span>
-                <ChevronDown className="w-3 h-3 text-neutral-400" />
+                <ChevronDown className="w-3 h-3 opacity-70" />
               </button>
 
               {isExampleMenuOpen && (
-                <div className="absolute right-0 mt-1 w-48 rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl z-30 py-1 font-mono text-xs">
+                <div className="absolute right-0 mt-1 w-48 rounded-xl border border-[#e2e2dc] bg-[#ffffff] text-[#0f172a] shadow-xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 z-30 py-1 font-mono text-xs">
                   <button
                     type="button"
                     onClick={() => {
                       onLoadExample("warung");
                       setIsExampleMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-800 text-neutral-200 transition-colors flex items-center justify-between"
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
                   >
                     <span>1. Warung Diskon</span>
-                    <span className="text-[10px] text-neutral-500">I/O</span>
+                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">I/O</span>
                   </button>
                   <button
                     type="button"
@@ -257,10 +257,10 @@ export function PseudocodeEditor({
                       onLoadExample("rata");
                       setIsExampleMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-800 text-neutral-200 transition-colors flex items-center justify-between"
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
                   >
                     <span>2. Rata-Rata</span>
-                    <span className="text-[10px] text-neutral-500">For Loop</span>
+                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">For Loop</span>
                   </button>
                   <button
                     type="button"
@@ -268,10 +268,10 @@ export function PseudocodeEditor({
                       onLoadExample("tes");
                       setIsExampleMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-800 text-neutral-200 transition-colors flex items-center justify-between"
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
                   >
                     <span>3. Percabangan</span>
-                    <span className="text-[10px] text-neutral-500">If-Else</span>
+                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">If-Else</span>
                   </button>
                   <button
                     type="button"
@@ -279,29 +279,27 @@ export function PseudocodeEditor({
                       onLoadExample("titik");
                       setIsExampleMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-800 text-neutral-200 transition-colors flex items-center justify-between"
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#ede9fe]/60 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between"
                   >
                     <span>4. Tipe Bentukan</span>
-                    <span className="text-[10px] text-neutral-500">Struct</span>
+                    <span className="text-[10px] text-[#64748b] dark:text-neutral-500">Struct</span>
                   </button>
                 </div>
               )}
             </div>
           )}
 
-
-
           {/* Copy Button */}
           <button
             type="button"
             onClick={copyCode}
             title="Salin isi program"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">Disalin</span>
+                <Check className="w-3 h-3 text-[#16a34a] dark:text-emerald-400" />
+                <span className="text-[#16a34a] dark:text-emerald-400">Disalin</span>
               </>
             ) : (
               <>
@@ -314,11 +312,11 @@ export function PseudocodeEditor({
       </div>
 
       {/* Code Editor Body */}
-      <div className="relative flex-1 min-h-0 flex overflow-hidden font-mono text-sm bg-[#0d0f12]">
+      <div className="relative flex-1 min-h-0 flex overflow-hidden font-mono text-sm bg-[#ffffff] dark:bg-[#0d0f12]">
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}
-          className="w-12 select-none py-3 bg-[#0a0c0f] border-r border-neutral-800/70 text-right pr-3 font-mono text-xs text-neutral-500 overflow-hidden"
+          className="w-12 select-none py-3 bg-[#f8f8f6] border-r border-[#e5e5df] text-right pr-3 font-mono text-xs text-[#94a3b8] dark:bg-[#0a0c0f] dark:border-neutral-800/70 dark:text-neutral-500 overflow-hidden"
         >
           {Array.from({ length: lineCount }).map((_, i) => {
             const lineNum = i + 1;
@@ -329,8 +327,8 @@ export function PseudocodeEditor({
                 key={lineNum}
                 className={cn(
                   "h-6 leading-6 flex items-center justify-end relative transition-colors",
-                  isError && "text-rose-400 font-bold bg-rose-500/20 rounded-l",
-                  isCurrent && !isError && "text-neutral-300"
+                  isError && "text-rose-600 font-bold bg-rose-500/15 rounded-l dark:text-rose-400 dark:bg-rose-500/20",
+                  isCurrent && !isError && "text-[#0f172a] font-semibold dark:text-neutral-300"
                 )}
               >
                 {isError && (
@@ -344,7 +342,7 @@ export function PseudocodeEditor({
 
         {/* Editor Area: Syntax Highlight Backdrop + Rainbow Indent + Transparent Textarea */}
         <div className="relative flex-1 min-h-0 h-full overflow-hidden">
-          {/* 1. Syntax Highlighted Code Backdrop (VS Code Dark+ Colors) */}
+          {/* 1. Syntax Highlighted Code Backdrop */}
           <pre
             ref={backdropRef}
             aria-hidden="true"
@@ -369,7 +367,7 @@ export function PseudocodeEditor({
                   className={cn(
                     "h-6 leading-6 whitespace-pre relative flex items-center",
                     isError && "bg-rose-500/15 rounded-sm",
-                    isCurrent && !isError && "bg-neutral-800/20"
+                    isCurrent && !isError && "bg-[#f8f8f6] dark:bg-neutral-800/20"
                   )}
                 >
                   {/* Subtle Rainbow Indent Guide Lines */}
@@ -392,7 +390,7 @@ export function PseudocodeEditor({
                     </div>
                   )}
 
-                  {/* Highlighted Tokens with VS Code Palette */}
+                  {/* Highlighted Tokens with dynamic Theme Palette */}
                   <span className="relative z-10">
                     {tokens.length > 0 ? (
                       tokens.map((tok, tIdx) => {
@@ -436,28 +434,28 @@ export function PseudocodeEditor({
             autoCorrect="off"
             style={{ tabSize: 4 }}
             placeholder="Tulis kode pseudocode di sini (atau muat contoh)..."
-            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-sky-400 placeholder:text-neutral-600 font-mono text-sm leading-6 selection:bg-sky-500/25 dark:selection:bg-sky-500/30 overflow-auto whitespace-pre m-0"
+            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 selection:bg-[#ede9fe] selection:text-[#1e1b4b] dark:selection:bg-sky-500/25 dark:selection:text-white overflow-auto whitespace-pre m-0"
           />
         </div>
       </div>
 
       {/* Editor Footer / Status Rail */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-neutral-800/80 bg-[#101318] text-[11px] font-mono text-neutral-400 select-none">
+      <div className="flex items-center justify-between px-4 py-2 border-t border-[#e5e5df] bg-[#fbfbfa] text-[11px] font-mono text-[#64748b] dark:border-neutral-800/80 dark:bg-[#101318] dark:text-neutral-400 select-none">
         <div className="flex items-center gap-3">
           <span>
-            Baris <span className="text-neutral-200">{cursorPos.line}</span>, Kolom{" "}
-            <span className="text-neutral-200">{cursorPos.col}</span>
+            Baris <span className="text-[#0f172a] dark:text-neutral-200 font-semibold">{cursorPos.line}</span>, Kolom{" "}
+            <span className="text-[#0f172a] dark:text-neutral-200 font-semibold">{cursorPos.col}</span>
           </span>
-          <span className="text-neutral-700">|</span>
+          <span className="text-[#cbd5e1] dark:text-neutral-700">|</span>
           <span>{lineCount} baris</span>
-          <span className="text-neutral-700">|</span>
+          <span className="text-[#cbd5e1] dark:text-neutral-700">|</span>
           <span>{code.length} karakter</span>
         </div>
-        <div className="flex items-center gap-2 text-neutral-400">
-          <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300 text-[10px]">
+        <div className="flex items-center gap-2">
+          <kbd className="px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#334155] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px]">
             Ctrl + Enter
           </kbd>
-          <span className="text-neutral-400">Jalankan</span>
+          <span>Jalankan</span>
         </div>
       </div>
     </div>

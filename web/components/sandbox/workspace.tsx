@@ -275,23 +275,23 @@ export function Workspace() {
   return (
     <div className="flex flex-col w-full max-w-7xl mx-auto gap-3.5 select-text">
       {/* Top Navigation & App Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-neutral-800 bg-[#0d0f12]/95 shadow-xl backdrop-blur-md">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[#e5e5df] bg-[#fbfbfa]/95 shadow-md text-[#0f172a] backdrop-blur-md dark:border-neutral-800 dark:bg-[#0d0f12]/95 dark:text-white transition-colors">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#ede9fe] border border-[#ddd6fe] text-[#5b45ff] dark:bg-purple-500/10 dark:border-purple-500/30 dark:text-purple-400">
             <Code2 className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white font-mono">
+              <span className="font-bold text-sm tracking-tight text-[#0f172a] dark:text-white font-mono">
                 Pseudocode Compiler
               </span>
-              <span className="px-1.5 py-0.2 rounded bg-neutral-800 border border-neutral-700 text-neutral-300 text-[10px] font-mono">
+              <span className="px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#475569] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px] font-mono">
                 v1.0
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
-              <span className="text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            <div className="flex items-center gap-2 text-[11px] text-[#64748b] dark:text-neutral-400 font-mono">
+              <span className="text-[#16a34a] dark:text-emerald-400 flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] dark:bg-emerald-400 inline-block" />
                 client engine online
               </span>
             </div>
@@ -315,7 +315,7 @@ export function Workspace() {
               type="button"
               onClick={runCode}
               title="Jalankan pseudocode (Ctrl + Enter)"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-medium text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all cursor-pointer font-mono"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-semibold text-xs bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-sm dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Jalankan</span>
@@ -330,9 +330,9 @@ export function Workspace() {
               setIsCheatsheetOpen(true);
             }}
             title="Buka panduan sintaks pseudocode"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-mono font-medium transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all cursor-pointer"
           >
-            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+            <BookOpen className="w-3.5 h-3.5 text-[#5b45ff] dark:text-amber-400" />
             <span className="hidden sm:inline">Panduan</span>
           </button>
 

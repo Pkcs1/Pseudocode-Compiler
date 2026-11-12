@@ -115,20 +115,20 @@ endif`,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-neutral-700 bg-neutral-900 text-neutral-100 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-[#e4e4df] bg-[#ffffff] text-[#0f172a] shadow-2xl overflow-hidden dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/90">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800 dark:bg-neutral-900/90">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-semibold tracking-tight text-white">
-              Sintaks & Panduan Pseudocode (Alpro 1)
+            <BookOpen className="w-5 h-5 text-[#5b45ff] dark:text-emerald-400" />
+            <h2 className="text-lg font-semibold tracking-tight text-[#0f172a] dark:text-white">
+              Sintaks &amp; Panduan Pseudocode (Alpro 1)
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+            className="p-1.5 rounded-lg text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -136,29 +136,29 @@ endif`,
 
         {/* Content list */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <p className="text-sm text-neutral-400">
-            Referensi sintaks resmi yang digunakan dalam perkuliahan Algoritma dan Pemrograman 1 (Minggu 1 – 15 Telkom University). Klik salin atau masukkan ke editor.
+          <p className="text-sm text-[#475569] dark:text-neutral-400">
+            Referensi sintaks resmi yang digunakan dalam perkuliahan Algoritma dan Pemrograman 1. Klik salin atau masukkan ke editor.
           </p>
 
           <div className="grid grid-cols-1 gap-5">
             {sections.map((sec, idx) => (
               <div
                 key={sec.title}
-                className="p-4 rounded-xl border border-neutral-800/80 bg-neutral-950/60 flex flex-col gap-2.5"
+                className="p-4 rounded-xl border border-[#e4e4df] bg-[#fbfbfa] dark:border-neutral-800/80 dark:bg-neutral-950/60 flex flex-col gap-2.5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-emerald-400 text-sm">
+                  <span className="font-semibold text-[#5b45ff] dark:text-emerald-400 text-sm">
                     {sec.title}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleCopy(sec.code, idx)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-md border border-neutral-700 bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-md border border-[#e2e2dc] bg-[#ffffff] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
                     >
                       {copiedIndex === idx ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <Check className="w-3.5 h-3.5 text-[#16a34a] dark:text-emerald-400" />
                           <span>Tersalin!</span>
                         </>
                       ) : (
@@ -175,15 +175,15 @@ endif`,
                           onInsertCode(sec.code);
                           onClose();
                         }}
-                        className="px-2.5 py-1 text-xs rounded-md bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 transition-all cursor-pointer"
+                        className="px-2.5 py-1 text-xs rounded-md bg-[#ede9fe] border border-[#ddd6fe] text-[#4f46e5] hover:bg-[#ddd6fe] dark:bg-emerald-600/20 dark:border-emerald-500/40 dark:text-emerald-300 dark:hover:bg-emerald-600/30 transition-all cursor-pointer font-medium"
                       >
                         Pakai di Editor
                       </button>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-neutral-400">{sec.description}</p>
-                <pre className="p-3 rounded-lg bg-neutral-900 border border-neutral-800 font-mono text-xs text-emerald-300/90 overflow-x-auto whitespace-pre">
+                <p className="text-xs text-[#64748b] dark:text-neutral-400">{sec.description}</p>
+                <pre className="p-3 rounded-lg bg-[#ffffff] border border-[#e4e4df] text-[#0f172a] dark:bg-neutral-900 dark:border-neutral-800 dark:text-emerald-300/90 font-mono text-xs overflow-x-auto whitespace-pre">
                   {sec.code}
                 </pre>
               </div>
@@ -192,11 +192,11 @@ endif`,
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-neutral-800 bg-neutral-900 flex justify-end">
+        <div className="px-6 py-3 border-t border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800 dark:bg-neutral-900 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-sm rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors cursor-pointer"
+            className="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#ede9fe] text-[#4f46e5] hover:bg-[#ddd6fe] border border-[#ddd6fe] dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 transition-colors cursor-pointer"
           >
             Tutup
           </button>

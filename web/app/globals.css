@@ -7,6 +7,36 @@
   --font-mono: var(--font-geist-mono);
 }
 
+:root {
+  /* Light mode syntax palette (from the reference image: indigo keywords, green strings, amber numbers) */
+  --syn-keyword: #4f46e5;
+  --syn-type: #0d9488;
+  --syn-func: #2563eb;
+  --syn-operator: #475569;
+  --syn-bool: #4f46e5;
+  --syn-string: #15803d;
+  --syn-number: #b45309;
+  --syn-comment: #64748b;
+  --syn-ident: #0f172a;
+  --syn-punct: #475569;
+  --syn-plain: #0f172a;
+}
+
+.dark {
+  /* Dark mode syntax palette (VS Code Dark+) */
+  --syn-keyword: #c586c0;
+  --syn-type: #4ec9b0;
+  --syn-func: #dcdcaa;
+  --syn-operator: #569cd6;
+  --syn-bool: #569cd6;
+  --syn-string: #ce9178;
+  --syn-number: #b5cea8;
+  --syn-comment: #6a9955;
+  --syn-ident: #9cdcfe;
+  --syn-punct: #d4d4d4;
+  --syn-plain: #d4d4d4;
+}
+
 .no-visible-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

@@ -1,15 +1,7 @@
 /**
- * VS Code style syntax tokenization for Indonesian Pseudocode.
- * Colors accurately mirror VS Code's Dark+ and Modern themes:
- * - Keywords: #c586c0 (purple/pink)
- * - Types: #4ec9b0 (teal/cyan)
- * - I/O & Built-ins: #dcdcaa (yellow/gold)
- * - Operators: #569cd6 (sky blue)
- * - Booleans: #569cd6 (blue)
- * - Strings: #ce9178 (terracotta orange)
- * - Numbers: #b5cea8 (sage green)
- * - Comments: #6a9955 (olive green, italic)
- * - Variables/Identifiers: #9cdcfe (light blue)
+ * Syntax tokenization for Indonesian Pseudocode.
+ * Supports both Light Mode (from the reference image: indigo keywords, green strings, amber numbers)
+ * and Dark Mode (VS Code Dark+), controlled via CSS custom properties in globals.css.
  */
 
 export type TokenType =
@@ -81,31 +73,17 @@ export const TOKEN_STYLE: Record<
   TokenType,
   { color: string; fontWeight?: string; fontStyle?: string }
 > = {
-  comment: { color: "#6a9955", fontStyle: "italic" },
-  string: { color: "#ce9178" },
-  number: { color: "#b5cea8" },
-  keyword: { color: "#c586c0", fontWeight: "600" },
-  type: { color: "#4ec9b0", fontWeight: "600" },
-  function: { color: "#dcdcaa", fontWeight: "500" },
-  operator: { color: "#569cd6" },
-  boolean: { color: "#569cd6", fontWeight: "600" },
-  identifier: { color: "#9cdcfe" },
-  punctuation: { color: "#d4d4d4" },
-  plain: { color: "#d4d4d4" },
-};
-
-export const TOKEN_CLASS_MAP: Record<TokenType, string> = {
-  comment: "text-[#6a9955] italic",
-  string: "text-[#ce9178]",
-  number: "text-[#b5cea8]",
-  keyword: "text-[#c586c0] font-semibold",
-  type: "text-[#4ec9b0] font-semibold",
-  function: "text-[#dcdcaa] font-medium",
-  operator: "text-[#569cd6]",
-  boolean: "text-[#569cd6] font-semibold",
-  identifier: "text-[#9cdcfe]",
-  punctuation: "text-neutral-400",
-  plain: "text-neutral-200",
+  comment: { color: "var(--syn-comment)", fontStyle: "italic" },
+  string: { color: "var(--syn-string)" },
+  number: { color: "var(--syn-number)" },
+  keyword: { color: "var(--syn-keyword)", fontWeight: "600" },
+  type: { color: "var(--syn-type)", fontWeight: "600" },
+  function: { color: "var(--syn-func)", fontWeight: "500" },
+  operator: { color: "var(--syn-operator)" },
+  boolean: { color: "var(--syn-bool)", fontWeight: "600" },
+  identifier: { color: "var(--syn-ident)" },
+  punctuation: { color: "var(--syn-punct)" },
+  plain: { color: "var(--syn-plain)" },
 };
 
 /**
