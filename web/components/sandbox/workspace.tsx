@@ -14,13 +14,13 @@ import { ThemeToggle } from "./theme-toggle";
 import { SoundVolumeControl } from "./sound-volume-control";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
+import { inspectSource, executePseudocode, ExecutionHandle } from "@/lib/engine";
 
 export function Workspace() {
   const [code, setCode] = useState<string>("");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [inspectData, setInspectData] = useState<InspectResult | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [soundVolume, setSoundVolume] = useState<number>(() => {
@@ -30,7 +30,7 @@ export function Workspace() {
   });
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const runnerHandleRef = useRef<ExecutionHandle | null>(null);
   const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
     soundVolume > 0,
     soundVolume
@@ -43,36 +43,34 @@ export function Workspace() {
     }
   };
 
-  // Initial inspection on mount (if code is present)
+  // Immediate in-browser inspection on code changes
   useEffect(() => {
-    if (!code.trim()) return;
-    fetch("/api/inspect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: code }),
-    })
-      .then((res) => res.json())
-      .then((data) => setInspectData(data))
-      .catch(() => {});
+    if (!code.trim()) {
+      setInspectData(null);
+      setErrorLine(null);
+      return;
+    }
+    try {
+      const data = inspectSource(code);
+      setInspectData(data);
+      if (data.error?.line) {
+        setErrorLine(data.error.line);
+      } else {
+        setErrorLine(null);
+      }
+    } catch {
+      // ignore
+    }
   }, [code]);
 
   const stopExecution = useCallback(() => {
-    if (activeSessionId) {
-      fetch("/api/session/kill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: activeSessionId }),
-      }).catch(() => {});
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (runnerHandleRef.current) {
+      runnerHandleRef.current.stop();
+      runnerHandleRef.current = null;
     }
 
     setIsRunning(false);
     setIsWaitingInput(false);
-    setActiveSessionId(null);
     setEntries((prev) => [
       ...prev,
       {
@@ -81,9 +79,9 @@ export function Workspace() {
         text: "[Eksekusi program dihentikan]",
       },
     ]);
-  }, [activeSessionId]);
+  }, []);
 
-  const runCode = async () => {
+  const runCode = () => {
     if (isRunning) {
       stopExecution();
       return;
@@ -104,127 +102,82 @@ export function Workspace() {
       },
     ]);
 
-    // Inspect in background for Kamus tab
-    fetch("/api/inspect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: code }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setInspectData(data);
-        if (data.error?.line) {
-          setErrorLine(data.error.line);
-        }
-      })
-      .catch(() => {});
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+    // Inspect
+    const ins = inspectSource(code);
+    setInspectData(ins);
+    if (ins.error?.line) {
+      setErrorLine(ins.error.line);
+    }
 
     try {
-      const response = await fetch("/api/session/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: code }),
-        signal: controller.signal,
+      const handle = executePseudocode(code, {
+        onStdout: (text) => {
+          setEntries((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              type: "stdout",
+              text,
+            },
+          ]);
+        },
+        onNeedInput: () => {
+          setIsWaitingInput(true);
+        },
+        onError: (err, durationMs) => {
+          setIsWaitingInput(false);
+          setIsRunning(false);
+          if (err.line) {
+            setErrorLine(err.line);
+          }
+          setEntries((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              type: "error",
+              error: err,
+              durationMs,
+            },
+          ]);
+        },
+        onExit: (codeNum, durationMs) => {
+          setIsWaitingInput(false);
+          setIsRunning(false);
+          setEntries((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              type: "exit",
+              code: codeNum,
+              durationMs,
+            },
+          ]);
+        },
       });
 
-      if (!response.ok || !response.body) {
-        throw new Error(`Server returned HTTP ${response.status}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
-
-        for (const ev of events) {
-          const line = ev.trim();
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.replace(/^data:\s*/, "");
-          if (!jsonStr) continue;
-
-          try {
-            const event = JSON.parse(jsonStr);
-
-            if (event.type === "init") {
-              setActiveSessionId(event.sessionId);
-            } else if (event.type === "stdout") {
-              setEntries((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  type: "stdout",
-                  text: event.text,
-                },
-              ]);
-            } else if (event.type === "need_input") {
-              setIsWaitingInput(true);
-            } else if (event.type === "error") {
-              setIsWaitingInput(false);
-              setIsRunning(false);
-              if (event.error?.line) {
-                setErrorLine(event.error.line);
-              }
-              setEntries((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  type: "error",
-                  error: event.error,
-                  durationMs: event.durationMs,
-                },
-              ]);
-            } else if (event.type === "exit") {
-              setIsWaitingInput(false);
-              setIsRunning(false);
-              setEntries((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  type: "exit",
-                  code: event.code,
-                  durationMs: event.durationMs,
-                },
-              ]);
-            }
-          } catch {
-            // ignore malformed chunks
-          }
-        }
-      }
+      runnerHandleRef.current = handle;
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
-      }
+      setIsRunning(false);
+      setIsWaitingInput(false);
+      const msg = err instanceof Error ? err.message : String(err);
       setEntries((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           type: "error",
           error: {
-            category: "koneksi runner",
-            message: err instanceof Error ? err.message : String(err),
+            category: "kesalahan eksekusi",
+            message: msg,
             line: 1,
             col: 1,
-            formatted: `Gagal berkomunikasi dengan runner: ${err}`,
+            formatted: `Gagal menjalankan program: ${msg}`,
           },
         },
       ]);
-      setIsRunning(false);
-      setIsWaitingInput(false);
     }
   };
 
-  const handleSendInput = async (val: string) => {
+  const handleSendInput = (val: string) => {
     soundDown("Enter");
     setIsWaitingInput(false);
 
@@ -238,23 +191,8 @@ export function Workspace() {
       },
     ]);
 
-    if (!activeSessionId) return;
-
-    try {
-      await fetch("/api/session/input", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: activeSessionId, input: val }),
-      });
-    } catch {
-      setEntries((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          type: "system",
-          text: "[Gagal mengirim input ke sesi runner]",
-        },
-      ]);
+    if (runnerHandleRef.current) {
+      runnerHandleRef.current.sendInput(val);
     }
   };
 

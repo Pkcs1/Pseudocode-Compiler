@@ -12,16 +12,14 @@ export async function POST(req: Request) {
     }
 
     const session = getSession(sessionId);
-    if (!session || session.proc.killed || !session.proc.stdin) {
+    if (!session || !session.handle) {
       return NextResponse.json(
         { ok: false, error: "Sesi tidak ditemukan atau telah selesai" },
         { status: 404 }
       );
     }
 
-    // Send formatted input to interactive runner
-    const payload = JSON.stringify({ type: "input", line: input }) + "\n";
-    session.proc.stdin.write(payload);
+    session.handle.sendInput(input);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -1,32 +1,14 @@
-import { ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  inspectSource,
+  InspectResult,
+  ExecutionHandle,
+} from "./engine";
 
-export interface InspectResult {
-  tokens: Array<{
-    type: string;
-    value: string;
-    line: number;
-    col: number;
-  }>;
-  ast: Record<string, unknown> | null;
-  kamus: {
-    aliases: Record<string, string>;
-    structs: Record<string, Record<string, string>>;
-    constants: string[];
-    variables: Record<string, string>;
-  };
-  error: {
-    category: string;
-    message: string;
-    line: number;
-    col: number;
-    formatted: string;
-  } | null;
-}
+export type { InspectResult };
 
 export function getProjectRoot(): string {
-  // Check if we are running from inside web/ or project root
   const direct = path.join(process.cwd(), "interactive_runner.py");
   if (fs.existsSync(direct)) {
     return process.cwd();
@@ -38,82 +20,13 @@ export function getProjectRoot(): string {
   return process.cwd();
 }
 
-export function getPythonCommand(): string {
-  return process.env.PYTHON_PATH || "python";
-}
-
 export async function inspectCode(source: string): Promise<InspectResult> {
-  const root = getProjectRoot();
-  const runnerPath = path.join(root, "interactive_runner.py");
-  const pyCmd = getPythonCommand();
-
-  return new Promise((resolve, reject) => {
-    const proc = spawn(/*turbopackIgnore: true*/ pyCmd, [runnerPath, "--inspect"], {
-      cwd: root,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    proc.on("error", (err) => {
-      reject(err);
-    });
-
-    proc.on("close", (code) => {
-      if (code !== 0 && !stdout.trim()) {
-        resolve({
-          tokens: [],
-          ast: null,
-          kamus: { aliases: {}, structs: {}, constants: [], variables: {} },
-          error: {
-            category: "kesalahan eksekusi runner",
-            message: stderr.trim() || `Proses inspeksi keluar dengan kode ${code}`,
-            line: 1,
-            col: 1,
-            formatted: stderr.trim() || `Proses inspeksi keluar dengan kode ${code}`,
-          },
-        });
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(stdout) as InspectResult;
-        resolve(parsed);
-      } catch (e) {
-        resolve({
-          tokens: [],
-          ast: null,
-          kamus: { aliases: {}, structs: {}, constants: [], variables: {} },
-          error: {
-            category: "kesalahan parse inspeksi",
-            message: e instanceof Error ? e.message : String(e),
-            line: 1,
-            col: 1,
-            formatted: `Gagal membaca hasil inspeksi:\n${stdout}\n${stderr}`,
-          },
-        });
-      }
-    });
-
-    // Write source payload to stdin
-    proc.stdin.write(JSON.stringify({ source }));
-    proc.stdin.end();
-  });
+  return inspectSource(source);
 }
 
 export interface ActiveSession {
   id: string;
-  proc: ChildProcess;
+  handle?: ExecutionHandle;
   createdAt: number;
   lastActivity: number;
 }
@@ -126,10 +39,13 @@ const sessions: Map<string, ActiveSession> =
   globalThis.__pseudocodeSessions ?? new Map<string, ActiveSession>();
 globalThis.__pseudocodeSessions = sessions;
 
-export function registerSession(id: string, proc: ChildProcess): ActiveSession {
+export function registerSession(
+  id: string,
+  handle?: ExecutionHandle
+): ActiveSession {
   const session: ActiveSession = {
     id,
-    proc,
+    handle,
     createdAt: Date.now(),
     lastActivity: Date.now(),
   };
@@ -148,12 +64,10 @@ export function getSession(id: string): ActiveSession | undefined {
 export function removeSession(id: string): void {
   const session = sessions.get(id);
   if (session) {
-    if (!session.proc.killed) {
-      try {
-        session.proc.kill();
-      } catch {
-        // ignore
-      }
+    try {
+      session.handle?.stop();
+    } catch {
+      // ignore
     }
     sessions.delete(id);
   }

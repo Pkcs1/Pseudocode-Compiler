@@ -1,6 +1,8 @@
 # Campus lecture slides & local scratch files (keep local only)
 slides/
 coba.pseudo
+harshad.pseudo
+warung.pseudo
 
 # Python byte-compiled / cache / build files
 __pycache__/
