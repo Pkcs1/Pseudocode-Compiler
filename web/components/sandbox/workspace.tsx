@@ -6,6 +6,9 @@ import {
   Square,
   Code2,
   FileText,
+  Terminal as TerminalIcon,
+  FlaskConical,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { PseudocodeEditor, JumpRequest } from "./pseudocode-editor";
@@ -13,7 +16,7 @@ import { ResultsPane, TerminalEntry } from "./results-pane";
 import { TestCasesPanel } from "./test-cases-panel";
 import { runTestCase, TestCase, TestResult } from "@/lib/test-runner";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "./theme-toggle";
+import { SettingsModal } from "./settings-modal";
 import { SoundVolumeControl } from "./sound-volume-control";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
@@ -32,6 +35,9 @@ let testCaseSeq = 0;
 const newTestCase = (): TestCase => ({ id: `case-${++testCaseSeq}`, input: "", expected: "" });
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** Which pane is visible on small screens (below `lg`, panes are shown one at a time). */
+type MobilePane = "code" | "results" | "tests";
 
 /** Drag handle between two panes (LeetCode style). Double-click resets the split. */
 function ResizeHandle({
@@ -113,6 +119,9 @@ export function Workspace() {
   // Tagged with the code it came from, so it disappears as soon as the code is edited.
   const [runtimeError, setRuntimeError] = useState<{ diag: Diagnostic; code: string } | null>(null);
   const [jumpTo, setJumpTo] = useState<JumpRequest | null>(null);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("code");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   // Test cases (run the program against fixed input/expected output)
   const [testCases, setTestCases] = useState<TestCase[]>(() => [newTestCase()]);
@@ -145,6 +154,18 @@ export function Workspace() {
     }
   };
 
+  // Ctrl/Cmd + , opens the settings popup from anywhere (like VS Code).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Live in-browser inspection (lexer + parser + checker + lint) on code changes
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -170,11 +191,13 @@ export function Workspace() {
 
   const handleJumpToDiagnostic = useCallback((line: number, col: number) => {
     setJumpTo({ line, col, nonce: Date.now() });
+    setMobilePane("code");
   }, []);
 
   const runTests = async (ids: string[]) => {
     if (runningTests.size > 0 || ids.length === 0) return;
     soundDown("Enter");
+    setMobilePane("tests");
     const source = code;
     const byId = new Map(testCases.map((tc) => [tc.id, tc]));
     setTestResults((prev) => {
@@ -236,6 +259,7 @@ export function Workspace() {
     }
 
     soundDown("Enter");
+    setMobilePane("results");
     setRuntimeError(null);
     setIsRunning(true);
     setIsWaitingInput(false);
@@ -359,17 +383,18 @@ export function Workspace() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-dvh lg:h-dvh gap-2 p-2 select-text">
+    <div className="flex flex-col w-full h-dvh gap-2 p-2 select-text overflow-hidden">
       {/* Top Navigation & App Header */}
-      <header className="relative z-40 flex flex-wrap items-center justify-between gap-3 px-4 py-2 rounded-xl border border-[#e5e5df] bg-[#fbfbfa]/95 shadow-sm text-[#0f172a] backdrop-blur-md dark:border-neutral-800 dark:bg-[#0d0f12]/95 dark:text-white transition-colors">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#ede9fe] border border-[#ddd6fe] text-[#5b45ff] dark:bg-purple-500/10 dark:border-purple-500/30 dark:text-purple-400">
+      <header className="relative z-40 flex items-center justify-between gap-2 px-3 sm:px-4 py-2 rounded-xl border border-[#e5e5df] bg-[#fbfbfa]/95 shadow-sm text-[#0f172a] backdrop-blur-md dark:border-neutral-800 dark:bg-[#0d0f12]/95 dark:text-white transition-colors">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg bg-[#ede9fe] border border-[#ddd6fe] text-[#5b45ff] dark:bg-purple-500/10 dark:border-purple-500/30 dark:text-purple-400">
             <Code2 className="w-4 h-4" />
           </div>
-          <span className="font-bold text-sm tracking-tight text-[#0f172a] dark:text-white font-mono">
-            Pseudocode Compiler
+          <span className="font-bold text-sm tracking-tight text-[#0f172a] dark:text-white font-mono truncate">
+            <span className="sm:hidden">Pseudocode</span>
+            <span className="hidden sm:inline">Pseudocode Compiler</span>
           </span>
-          <span className="px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#475569] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px] font-mono">
+          <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#475569] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px] font-mono">
             v1.0
           </span>
           <span className="hidden md:flex text-[11px] text-[#16a34a] dark:text-emerald-400 items-center gap-1 font-medium font-mono">
@@ -378,26 +403,27 @@ export function Workspace() {
           </span>
         </div>
         {/* Global Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Run / Stop Button */}
           {isRunning ? (
             <button
               type="button"
               onClick={stopExecution}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-medium text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md transition-all cursor-pointer font-mono"
+              title="Hentikan program"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl font-medium text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md transition-all cursor-pointer font-mono"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
-              <span>Hentikan</span>
+              <span className="hidden sm:inline">Hentikan</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={runCode}
               title="Jalankan pseudocode (Ctrl + Enter)"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-semibold text-xs bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-sm dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl font-semibold text-xs bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-sm dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Jalankan</span>
+              <span className="hidden sm:inline">Jalankan</span>
             </button>
           )}
 
@@ -405,7 +431,7 @@ export function Workspace() {
           <Link
             href="/docs"
             title="Buka dokumentasi bahasa pseudocode"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all"
           >
             <FileText className="w-3.5 h-3.5 text-[#5b45ff] dark:text-sky-400" />
             <span className="hidden sm:inline">Dokumentasi</span>
@@ -418,19 +444,75 @@ export function Workspace() {
             onPreviewClick={(v) => playClickPreview(v)}
           />
 
-          {/* Dark / Light Mode Toggle */}
-          <ThemeToggle onToggleSound={() => soundDown("Enter")} />
+          {/* Settings (theme, indentation, indent rainbow) */}
+          <button
+            type="button"
+            onClick={() => {
+              soundDown("Enter");
+              setSettingsOpen(true);
+            }}
+            title="Pengaturan (Ctrl + ,)"
+            aria-label="Pengaturan"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] transition-all cursor-pointer dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </header>
+
+      {/* Mobile pane switcher (below lg only one pane is visible at a time) */}
+      <nav
+        aria-label="Pilih panel"
+        className="lg:hidden grid grid-cols-3 gap-1 p-1 rounded-xl border border-[#e5e5df] bg-[#f1f1ee] dark:border-neutral-800 dark:bg-neutral-900/80 font-mono text-xs"
+      >
+        {(
+          [
+            { id: "code", label: "Kode", icon: <Code2 className="w-3.5 h-3.5" /> },
+            {
+              id: "results",
+              label: "Hasil",
+              icon: <TerminalIcon className="w-3.5 h-3.5" />,
+              badge: diagnostics.length || (isRunning ? "•" : null),
+            },
+            { id: "tests", label: "Tes", icon: <FlaskConical className="w-3.5 h-3.5" /> },
+          ] as { id: MobilePane; label: string; icon: React.ReactNode; badge?: number | string | null }[]
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setMobilePane(tab.id)}
+            aria-pressed={mobilePane === tab.id}
+            className={cn(
+              "inline-flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer",
+              mobilePane === tab.id
+                ? "bg-white text-[#0f172a] shadow-xs dark:bg-neutral-800 dark:text-white"
+                : "text-[#64748b] dark:text-neutral-400"
+            )}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+            {tab.badge ? (
+              <span className="min-w-4 px-1 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-semibold leading-4">
+                {tab.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </nav>
 
       {/* MAIN: LeetCode-style split — editor | (test cases / results) */}
       <div
         ref={mainRef}
-        className="flex flex-col gap-2 lg:gap-0 lg:flex-row lg:flex-1 lg:min-h-0"
+        className="flex flex-col flex-1 min-h-0 lg:flex-row"
         style={{ "--left": `${leftPct}%`, "--top": `${topPct}%` } as React.CSSProperties}
       >
         {/* Left: Code Editor */}
-        <section className="relative z-10 h-[65vh] lg:h-auto lg:min-w-0 lg:w-[var(--left)]">
+        <section
+          className={cn(
+            "relative z-10 flex-1 min-h-0 lg:flex-none lg:block lg:min-w-0 lg:w-[var(--left)]",
+            mobilePane === "code" ? "block" : "hidden"
+          )}
+        >
           <PseudocodeEditor
             code={code}
             onChange={setCode}
@@ -455,8 +537,19 @@ export function Workspace() {
         />
 
         {/* Right: Problems / Terminal / Kamus (top) + Test cases (bottom) */}
-        <div ref={rightRef} className="flex flex-col gap-2 lg:gap-0 lg:flex-1 lg:min-w-0 lg:min-h-0">
-          <section className="h-[55vh] lg:min-h-0 lg:h-[var(--top)]">
+        <div
+          ref={rightRef}
+          className={cn(
+            "flex-col flex-1 min-h-0 lg:flex lg:min-w-0",
+            mobilePane === "code" ? "hidden" : "flex"
+          )}
+        >
+          <section
+            className={cn(
+              "flex-1 min-h-0 lg:flex-none lg:block lg:h-[var(--top)]",
+              mobilePane === "results" ? "block" : "hidden"
+            )}
+          >
             <ResultsPane
               entries={entries}
               isRunning={isRunning}
@@ -481,7 +574,12 @@ export function Workspace() {
             className="hidden lg:flex"
           />
 
-          <section className="h-[55vh] lg:h-auto lg:flex-1 lg:min-h-0">
+          <section
+            className={cn(
+              "flex-1 min-h-0 lg:block",
+              mobilePane === "tests" ? "block" : "hidden"
+            )}
+          >
             <TestCasesPanel
               cases={testCases}
               results={testResults}
@@ -497,6 +595,7 @@ export function Workspace() {
         </div>
       </div>
 
+      <SettingsModal open={settingsOpen} onClose={closeSettings} onSound={() => soundDown("Enter")} />
     </div>
   );
 }

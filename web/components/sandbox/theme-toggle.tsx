@@ -1,39 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
+import { setThemePreference, useIsDark } from "@/lib/theme";
 
 interface ThemeToggleProps {
   onToggleSound?: () => void;
 }
 
+/** Quick light/dark switch (used on the docs page; the editor uses the settings popup). */
 export function ThemeToggle({ onToggleSound }: ThemeToggleProps) {
-  const [isDark, setIsDark] = useState<boolean>(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("pseudo-theme");
-    const active = saved === "dark";
-    setIsDark(active);
-    if (active) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
+  const isDark = useIsDark();
 
   const toggle = () => {
     onToggleSound?.();
-    setIsDark((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("pseudo-theme", "dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("pseudo-theme", "light");
-      }
-      return next;
-    });
+    setThemePreference(isDark ? "light" : "dark");
   };
 
   return (

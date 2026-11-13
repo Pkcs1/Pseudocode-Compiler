@@ -68,6 +68,13 @@ const STATUS_META: Record<
 const CELL_TEXTAREA =
   "block w-full min-h-[3.25rem] resize-y rounded-md border border-[#e5e5df] bg-[#fbfbfa] px-2 py-1.5 font-mono text-xs leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8] focus:border-[#a5b4fc] focus:bg-white dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-sky-500/50 dark:focus:bg-neutral-900";
 
+/** Column layout shared by the header row and each case row (from `sm` up). */
+const ROW_GRID = "sm:grid sm:grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_92px]";
+
+/** Small caption shown above each field when rows are stacked (phones). */
+const FIELD_LABEL =
+  "sm:hidden block mb-1 text-[10px] uppercase tracking-wider font-semibold text-[#64748b] dark:text-neutral-500";
+
 function rowsFor(text: string): number {
   return Math.min(8, Math.max(2, text.split("\n").length));
 }
@@ -94,17 +101,17 @@ export function TestCasesPanel({
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none">
         <div className="flex items-center gap-2 min-w-0">
           <FlaskConical className="w-3.5 h-3.5 text-[#5b45ff] dark:text-sky-400 shrink-0" />
-          <span className="font-bold text-xs text-[#0f172a] dark:text-neutral-200 tracking-wider">
+          <span className="font-bold text-xs text-[#0f172a] dark:text-neutral-200 tracking-wider whitespace-nowrap">
             TEST CASE
           </span>
-          <span className="text-[#cbd5e1] dark:text-neutral-600 text-xs">•</span>
-          <span className="text-[11px] text-[#64748b] dark:text-neutral-400 truncate">
+          <span className="hidden sm:inline text-[#cbd5e1] dark:text-neutral-600 text-xs">•</span>
+          <span className="hidden sm:inline text-[11px] text-[#64748b] dark:text-neutral-400 truncate">
             {cases.length} kasus
           </span>
           {compared.length > 0 && !isAnyRunning && (
             <span
               className={cn(
-                "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                "text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap",
                 passed === compared.length
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                   : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
@@ -136,7 +143,9 @@ export function TestCasesPanel({
             ) : (
               <Play className="w-3 h-3 fill-current" />
             )}
-            <span>Jalankan Tes</span>
+            <span>
+              <span className="hidden sm:inline">Jalankan </span>Tes
+            </span>
           </button>
         </div>
       </div>
@@ -148,42 +157,43 @@ export function TestCasesPanel({
             Belum ada test case. Klik <strong>+ Kasus</strong> untuk menambahkan.
           </div>
         ) : (
-          <table className="w-full border-collapse text-xs table-fixed min-w-[560px]">
-            <colgroup>
-              <col className="w-9" />
-              <col />
-              <col />
-              <col />
-              <col className="w-[92px]" />
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-[#f8f8f6] dark:bg-[#101318] text-[10px] uppercase tracking-wider text-[#64748b] dark:text-neutral-500">
-              <tr className="border-b border-[#e5e5df] dark:border-neutral-800">
-                <th className="py-1.5 font-semibold">#</th>
-                <th className="py-1.5 px-2 text-left font-semibold">Input</th>
-                <th className="py-1.5 px-2 text-left font-semibold">Output Diharapkan</th>
-                <th className="py-1.5 px-2 text-left font-semibold">Output Program</th>
-                <th className="py-1.5 px-2 text-left font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="table" className="text-xs">
+            <div
+              role="row"
+              className={cn(
+                "hidden sticky top-0 z-10 bg-[#f8f8f6] dark:bg-[#101318] text-[10px] uppercase tracking-wider text-[#64748b] dark:text-neutral-500 border-b border-[#e5e5df] dark:border-neutral-800",
+                ROW_GRID
+              )}
+            >
+              <div role="columnheader" className="py-1.5 text-center font-semibold">#</div>
+              <div role="columnheader" className="py-1.5 px-2 font-semibold">Input</div>
+              <div role="columnheader" className="py-1.5 px-2 font-semibold">Output Diharapkan</div>
+              <div role="columnheader" className="py-1.5 px-2 font-semibold">Output Program</div>
+              <div role="columnheader" className="py-1.5 px-2 font-semibold">Status</div>
+            </div>
+            <div role="rowgroup">
               {cases.map((tc, idx) => {
                 const result = results[tc.id];
                 const isRunning = running.has(tc.id);
                 const meta = result ? STATUS_META[result.status] : null;
                 const StatusIcon = meta?.icon;
                 return (
-                  <tr
+                  <div
+                    role="row"
                     key={tc.id}
                     className={cn(
-                      "align-top border-b border-[#efefea] dark:border-neutral-800/70",
+                      "relative px-2 pt-2 pb-3 sm:p-0 space-y-2 sm:space-y-0 border-b border-[#efefea] dark:border-neutral-800/70",
                       result?.status === "pass" && "bg-emerald-500/[0.04]",
-                      (result?.status === "fail" || result?.status === "error") && "bg-rose-500/[0.04]"
+                      (result?.status === "fail" || result?.status === "error") && "bg-rose-500/[0.04]",
+                      ROW_GRID
                     )}
                   >
-                    <td className="py-2 text-center text-[11px] font-semibold text-[#94a3b8] dark:text-neutral-500">
+                    <div role="cell" className="sm:py-2 sm:text-center text-[11px] font-semibold text-[#94a3b8] dark:text-neutral-500">
+                      <span className="sm:hidden">Kasus </span>
                       {idx + 1}
-                    </td>
-                    <td className="py-2 px-1.5">
+                    </div>
+                    <div role="cell" className="sm:py-2 sm:px-1.5">
+                      <span className={FIELD_LABEL}>Input</span>
                       <textarea
                         value={tc.input}
                         rows={rowsFor(tc.input)}
@@ -192,8 +202,9 @@ export function TestCasesPanel({
                         onChange={(e) => onChangeCase(tc.id, { input: e.target.value })}
                         className={CELL_TEXTAREA}
                       />
-                    </td>
-                    <td className="py-2 px-1.5">
+                    </div>
+                    <div role="cell" className="sm:py-2 sm:px-1.5">
+                      <span className={FIELD_LABEL}>Output Diharapkan</span>
                       <textarea
                         value={tc.expected}
                         rows={rowsFor(tc.expected)}
@@ -202,8 +213,9 @@ export function TestCasesPanel({
                         onChange={(e) => onChangeCase(tc.id, { expected: e.target.value })}
                         className={CELL_TEXTAREA}
                       />
-                    </td>
-                    <td className="py-2 px-1.5">
+                    </div>
+                    <div role="cell" className="sm:py-2 sm:px-1.5">
+                      <span className={FIELD_LABEL}>Output Program</span>
                       <div
                         className={cn(
                           "min-h-[3.25rem] max-h-40 overflow-auto rounded-md border border-dashed border-[#e5e5df] px-2 py-1.5 leading-5 whitespace-pre-wrap break-words dark:border-neutral-800",
@@ -236,9 +248,10 @@ export function TestCasesPanel({
                           <span className="italic">belum dijalankan</span>
                         )}
                       </div>
-                    </td>
-                    <td className="py-2 px-1.5">
-                      <div className="flex flex-col items-start gap-1.5">
+                    </div>
+                    {/* Status + actions: top-right corner on phones, own column from sm */}
+                    <div role="cell" className="absolute top-1.5 right-2 sm:static sm:py-2 sm:px-1.5">
+                      <div className="flex flex-row-reverse sm:flex-col items-center sm:items-start gap-1.5">
                         {meta && StatusIcon && !isRunning ? (
                           <span
                             className={cn(
@@ -278,12 +291,12 @@ export function TestCasesPanel({
                           </button>
                         </div>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
         )}
       </div>
     </div>

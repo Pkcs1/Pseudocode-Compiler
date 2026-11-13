@@ -10,6 +10,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEditorSettings, visualWidth } from "@/lib/editor-settings";
+import { IndentGuides } from "./indent-guides";
 import { tokenizeLine, TOKEN_STYLE } from "@/lib/syntax-highlighter";
 import type { Diagnostic } from "@/lib/engine";
 
@@ -22,14 +24,50 @@ export interface JumpRequest {
 
 const LINE_HEIGHT_PX = 24;
 
-/** Column (1-based) → visual offset in characters, expanding tabs (tabSize 4). */
-function visualOffset(lineText: string, col: number): number {
-  let vis = 0;
-  for (let i = 0; i < Math.min(col - 1, lineText.length); i++) {
-    vis = lineText[i] === "\t" ? (Math.floor(vis / 4) + 1) * 4 : vis + 1;
-  }
-  return vis + Math.max(0, col - 1 - lineText.length);
+/** Column (1-based) → visual offset in characters, expanding tabs. */
+function visualOffset(lineText: string, col: number, tabSize: number): number {
+  const upTo = Math.min(col - 1, lineText.length);
+  return visualWidth(lineText.slice(0, upTo), tabSize) + Math.max(0, col - 1 - lineText.length);
 }
+
+/**
+ * Replace `[start, end)` of the textarea with `text` the way typing would, so the
+ * browser's undo stack (Ctrl+Z) keeps working, then select `[selStart, selEnd]`.
+ * Fires a normal `input` event, so React's onChange runs as usual.
+ */
+function replaceRange(
+  ta: HTMLTextAreaElement,
+  start: number,
+  end: number,
+  text: string,
+  selStart: number,
+  selEnd: number = selStart
+) {
+  ta.focus();
+  ta.setSelectionRange(start, end);
+  let ok = false;
+  try {
+    ok = text
+      ? document.execCommand("insertText", false, text)
+      : start === end || document.execCommand("delete");
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    ta.setRangeText(text, start, end, "end");
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  ta.setSelectionRange(selStart, selEnd);
+}
+
+/** Offset of the first character of the line containing `pos`. */
+const lineStartOf = (value: string, pos: number) => value.lastIndexOf("\n", pos - 1) + 1;
+
+/** Offset just past the last character (before the newline) of the line containing `pos`. */
+const lineEndOf = (value: string, pos: number) => {
+  const nl = value.indexOf("\n", pos);
+  return nl === -1 ? value.length : nl;
+};
 
 const DIAG_STYLE = {
   error: {
@@ -63,14 +101,6 @@ interface PseudocodeEditorProps {
   lastExecutionMs?: number | null;
 }
 
-const RAINBOW_INDENTS = [
-  { border: "border-indigo-500/30 dark:border-emerald-500/30", bg: "bg-indigo-500/[0.03] dark:bg-emerald-500/[0.03]" },
-  { border: "border-teal-500/30 dark:border-sky-500/30", bg: "bg-teal-500/[0.03] dark:bg-sky-500/[0.03]" },
-  { border: "border-purple-500/30 dark:border-purple-500/30", bg: "bg-purple-500/[0.03] dark:bg-purple-500/[0.03]" },
-  { border: "border-amber-500/30 dark:border-amber-500/30", bg: "bg-amber-500/[0.03] dark:bg-amber-500/[0.03]" },
-  { border: "border-rose-500/30 dark:border-rose-500/30", bg: "bg-rose-500/[0.03] dark:bg-rose-500/[0.03]" },
-];
-
 export function PseudocodeEditor({
   code,
   onChange,
@@ -89,6 +119,8 @@ export function PseudocodeEditor({
   const backdropRef = useRef<HTMLPreElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const settings = useEditorSettings();
+  const { tabSize, insertSpaces } = settings;
 
   const lines = useMemo(() => code.split("\n"), [code]);
   const lineCount = lines.length;
@@ -200,56 +232,93 @@ export function PseudocodeEditor({
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    if (e.nativeEvent.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+
+    const value = textarea.value;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const indentUnit = insertSpaces ? " ".repeat(tabSize) : "\t";
+
     if (e.key === "Tab") {
       e.preventDefault();
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
+      const firstLineStart = lineStartOf(value, start);
+      // A selection ending at column 0 doesn't include that last line (VS Code behaviour).
+      const effectiveEnd = end > start && value[end - 1] === "\n" ? end - 1 : end;
+      const multiLine = value.slice(start, effectiveEnd).includes("\n");
 
-      if (e.shiftKey) {
-        // Unindent 4 spaces
-        const before = code.substring(0, start);
-        const lastNewline = before.lastIndexOf("\n");
-        const lineStart = lastNewline === -1 ? 0 : lastNewline + 1;
-        const linePrefix = code.substring(lineStart, lineStart + 4);
-        if (linePrefix === "    ") {
-          const nextCode =
-            code.substring(0, lineStart) + code.substring(lineStart + 4);
-          onChange(nextCode);
-          setTimeout(() => {
-            textarea.selectionStart = Math.max(lineStart, start - 4);
-            textarea.selectionEnd = Math.max(lineStart, end - 4);
-            updateCursorPosition();
-          }, 0);
+      if (!e.shiftKey && !multiLine) {
+        // Insert one indentation step, up to the next tab stop.
+        const col = visualWidth(value.slice(firstLineStart, start), tabSize);
+        const text = insertSpaces ? " ".repeat(tabSize - (col % tabSize)) : "\t";
+        replaceRange(textarea, start, end, text, start + text.length);
+        updateCursorPosition();
+        return;
+      }
+
+      // Indent / outdent every line touched by the selection.
+      const blockEnd = lineEndOf(value, effectiveEnd);
+      const blockLines = value.slice(firstLineStart, blockEnd).split("\n");
+      // Per line: [offset of line start in the original text, removed chars, inserted chars]
+      const edits: [number, number, number][] = [];
+      let offset = firstLineStart;
+      const nextLines = blockLines.map((line) => {
+        const at = offset;
+        offset += line.length + 1;
+        if (!e.shiftKey) {
+          if (line.trim() === "" && blockLines.length > 1) return line; // skip blank lines
+          edits.push([at, 0, indentUnit.length]);
+          return indentUnit + line;
         }
-      } else {
-        // Insert 4 spaces
-        const nextCode =
-          code.substring(0, start) + "    " + code.substring(end);
-        onChange(nextCode);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 4;
-          updateCursorPosition();
-        }, 0);
+        let remove = 0;
+        if (line.startsWith("\t")) remove = 1;
+        else {
+          const spaces = line.match(/^ */)![0].length;
+          remove = Math.min(spaces, spaces % tabSize || tabSize);
+        }
+        if (remove > 0) edits.push([at, remove, 0]);
+        return line.slice(remove);
+      });
+      if (edits.length === 0) return;
+
+      // Map an offset in the old text to the new text. A position exactly at a line
+      // start stays before the inserted indent (so a whole-line selection grows to cover it);
+      // a position inside removed whitespace collapses to the line start.
+      const map = (pos: number) => {
+        let shift = 0;
+        for (const [at, removed, inserted] of edits) {
+          if (pos < at || (pos === at && inserted > 0)) break;
+          if (pos <= at + removed) return at + shift;
+          shift += inserted - removed;
+        }
+        return pos + shift;
+      };
+      replaceRange(textarea, firstLineStart, blockEnd, nextLines.join("\n"), map(start), map(end));
+      updateCursorPosition();
+      return;
+    }
+
+    if (e.key === "Backspace" && !e.shiftKey && start === end && start > 0) {
+      // Inside leading whitespace made of spaces: delete back to the previous tab stop.
+      const lineStart = lineStartOf(value, start);
+      const before = value.slice(lineStart, start);
+      if (before.length > 0 && /^ +$/.test(before)) {
+        e.preventDefault();
+        const remove = before.length % tabSize || tabSize;
+        replaceRange(textarea, start - remove, start, "", start - remove);
+        updateCursorPosition();
       }
       return;
     }
 
-    if (e.key === "Enter") {
-      const start = textarea.selectionStart;
-      const textBefore = code.substring(0, start);
-      const curLine = textBefore.split("\n").pop() || "";
-      const matchIndent = curLine.match(/^(\s+)/);
-      if (matchIndent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // Keep the current line's indentation on the new line.
+      const lineStart = lineStartOf(value, start);
+      const indent = value.slice(lineStart, start).match(/^[ \t]*/)![0];
+      if (indent) {
         e.preventDefault();
-        const indent = matchIndent[1];
-        const nextCode =
-          code.substring(0, start) + "\n" + indent + code.substring(start);
-        onChange(nextCode);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd =
-            start + 1 + indent.length;
-          updateCursorPosition();
-        }, 0);
+        const text = "\n" + indent;
+        replaceRange(textarea, start, end, text, start + text.length);
+        updateCursorPosition();
       }
     }
   };
@@ -268,10 +337,10 @@ export function PseudocodeEditor({
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
       {/* Top Window Header (Option 2 Window Header Style with Light Palette & Dark Toggle) */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none gap-2">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none gap-2">
         <div className="flex items-center gap-3">
           {/* macOS Traffic Lights */}
-          <div className="flex items-center gap-1.5 mr-1">
+          <div className="hidden sm:flex items-center gap-1.5 mr-1">
             <span className="w-3 h-3 rounded-full bg-[#ff5f56] inline-block" />
             <span className="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block" />
             <span className="w-3 h-3 rounded-full bg-[#27c93f] inline-block" />
@@ -297,7 +366,7 @@ export function PseudocodeEditor({
             <button
               type="button"
               onClick={onStop}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all cursor-pointer font-mono"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all cursor-pointer font-mono"
             >
               <Square className="w-3 h-3 fill-current" />
               <span>Hentikan</span>
@@ -307,7 +376,7 @@ export function PseudocodeEditor({
               type="button"
               onClick={onRun}
               title="Jalankan kode pseudocode (Ctrl + Enter)"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-xs dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[#5b45ff] hover:bg-[#4f46e5] text-white shadow-xs dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer font-mono"
             >
               <Play className="w-3 h-3 fill-current" />
               <span>Jalankan</span>
@@ -383,7 +452,7 @@ export function PseudocodeEditor({
             ref={backdropRef}
             aria-hidden="true"
             tabIndex={-1}
-            style={{ tabSize: 4 }}
+            style={{ tabSize }}
             className="absolute inset-0 pointer-events-none py-3 px-4 font-mono text-sm leading-6 overflow-hidden select-none whitespace-pre m-0 border-0"
           >
             {lines.map((line, idx) => {
@@ -393,11 +462,6 @@ export function PseudocodeEditor({
               const diagStyle = top ? DIAG_STYLE[top.severity] : null;
               const isCurrent = cursorPos.line === lineNum;
               const tokens = tokenizeLine(line);
-
-              // Rainbow indent calculations
-              const match = line.match(/^ */);
-              const spaceCount = match ? match[0].length : 0;
-              const indentCount = Math.floor(spaceCount / 4);
 
               return (
                 <div
@@ -410,7 +474,7 @@ export function PseudocodeEditor({
                 >
                   {/* Squiggly underline under each problem's location */}
                   {lineDiags?.map((d, dIdx) => {
-                    const start = visualOffset(line, d.col);
+                    const start = visualOffset(line, d.col, tabSize);
                     const text =
                       d.length > 0 ? line.slice(d.col - 1, d.col - 1 + d.length) : "";
                     return (
@@ -426,30 +490,13 @@ export function PseudocodeEditor({
                           textUnderlineOffset: "4px",
                         }}
                       >
-                        {text.replace(/\t/g, "    ") || "\u00a0\u00a0"}
+                        {text.replace(/\t/g, " ".repeat(tabSize)) || "\u00a0\u00a0"}
                       </span>
                     );
                   })}
 
-                  {/* Subtle Rainbow Indent Guide Lines */}
-                  {indentCount > 0 && (
-                    <div className="absolute top-0 bottom-0 left-0 flex pointer-events-none">
-                      {Array.from({ length: indentCount }).map((_, level) => {
-                        const color =
-                          RAINBOW_INDENTS[level % RAINBOW_INDENTS.length];
-                        return (
-                          <span
-                            key={level}
-                            className={cn(
-                              "inline-block h-6 border-l transition-colors",
-                              color.border
-                            )}
-                            style={{ width: "4ch" }}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* indent-rainbow style coloring (configurable in the settings popup) */}
+                  <IndentGuides line={line} settings={settings} />
 
                   {/* Highlighted Tokens with dynamic Theme Palette */}
                   <span className="relative z-10">
@@ -510,7 +557,7 @@ export function PseudocodeEditor({
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            style={{ tabSize: 4 }}
+            style={{ tabSize }}
             placeholder="Tulis kode pseudocode di sini (atau muat contoh)..."
             className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 code-input overflow-auto whitespace-pre m-0"
           />
@@ -518,7 +565,7 @@ export function PseudocodeEditor({
       </div>
 
       {/* Editor Footer / Status Rail */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-[#e5e5df] bg-[#fbfbfa] text-[11px] font-mono text-[#64748b] dark:border-neutral-800/80 dark:bg-[#101318] dark:text-neutral-400 select-none">
+      <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-t border-[#e5e5df] bg-[#fbfbfa] text-[11px] whitespace-nowrap font-mono text-[#64748b] dark:border-neutral-800/80 dark:bg-[#101318] dark:text-neutral-400 select-none">
         <div className="flex items-center gap-3">
           <span>
             Baris <span className="text-[#0f172a] dark:text-neutral-200 font-semibold">{cursorPos.line}</span>, Kolom{" "}
@@ -526,10 +573,11 @@ export function PseudocodeEditor({
           </span>
           <span className="text-[#cbd5e1] dark:text-neutral-700">|</span>
           <span>{lineCount} baris</span>
-          <span className="text-[#cbd5e1] dark:text-neutral-700">|</span>
-          <span>{code.length} karakter</span>
+          <span className="hidden sm:inline text-[#cbd5e1] dark:text-neutral-700">|</span>
+          <span className="hidden sm:inline">{code.length} karakter</span>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Keyboard shortcuts: irrelevant on touch-sized screens */}
+        <div className="hidden md:flex items-center gap-2">
           <kbd className="px-1.5 py-0.5 rounded bg-[#edeef0] border border-[#e2e2dc] text-[#334155] dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 text-[10px]">
             Ctrl + Enter
           </kbd>

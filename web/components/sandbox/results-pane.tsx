@@ -53,7 +53,7 @@ interface ResultsPaneProps {
 
 const TAB_CLASS = (active: boolean) =>
   cn(
-    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer",
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer",
     active
       ? "bg-[#ffffff] text-[#0f172a] shadow-xs dark:bg-neutral-800 dark:text-white"
       : "text-[#64748b] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -129,10 +129,10 @@ export function ResultsPane({
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-xl overflow-hidden font-mono transition-colors">
       {/* Pane Header (Option 2 RESULTS bar) */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none">
-        <div className="flex items-center gap-3">
-          {/* Section Title */}
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Section Title (counts hidden on narrow screens to leave room for the tabs) */}
+          <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
             <span className="font-bold text-xs text-[#0f172a] dark:text-neutral-200 tracking-wider">
               RESULTS
             </span>
@@ -155,7 +155,7 @@ export function ResultsPane({
           </div>
 
           {/* Tab Selector */}
-          <div className="flex items-center p-0.5 rounded-lg bg-[#f1f1ee] border border-[#e2e2dc] dark:bg-neutral-950/80 dark:border-neutral-800 text-xs ml-2">
+          <div className="flex items-center min-w-0 overflow-x-auto p-0.5 rounded-lg bg-[#f1f1ee] border border-[#e2e2dc] dark:bg-neutral-950/80 dark:border-neutral-800 text-xs sm:ml-2">
             <button
               type="button"
               onClick={() => setActiveTab("problems")}
@@ -192,22 +192,31 @@ export function ResultsPane({
               className={TAB_CLASS(activeTab === "kamus")}
             >
               <TableProperties className="w-3 h-3 text-[#5b45ff] dark:text-purple-400" />
-              <span>Tabel Kamus</span>
+              <span className="sm:hidden">Kamus</span>
+              <span className="hidden sm:inline">Tabel Kamus</span>
             </button>
           </div>
         </div>
 
         {/* Right side status badge & clear button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {isRunning ? (
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 font-medium">
               <Loader2 className="w-2.5 h-2.5 animate-spin text-amber-600 dark:text-amber-400" />
-              <span>{isWaitingInput ? "Menunggu Input" : "Berjalan"}</span>
+              <span className="whitespace-nowrap">
+                {isWaitingInput ? (
+                  <>
+                    <span className="hidden sm:inline">Menunggu </span>Input
+                  </>
+                ) : (
+                  "Berjalan"
+                )}
+              </span>
             </div>
           ) : (
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-[#16a34a] dark:text-neutral-400 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] inline-block mr-0.5" />
-              <span>Siap</span>
+              <span className="hidden sm:inline">Siap</span>
             </div>
           )}
 
