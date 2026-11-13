@@ -257,6 +257,11 @@ function tokenizeBash(text: string): Token[] {
       tokens.push({ type: "operator", value: word });
       isFirstWord = true;
       continue;
+
+
+
+
+              
     }
 
     if (word.includes("/") || word.startsWith(".") || word.startsWith("~")) {

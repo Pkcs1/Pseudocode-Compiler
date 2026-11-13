@@ -6,17 +6,35 @@ import { EditorSettings, hexToRgba, visualWidth } from "@/lib/editor-settings";
 const ERROR_FILL = "rgba(239, 68, 68, 0.28)";
 
 /**
+ * Visual width (in ch) the indent guides cover on a line, or 0 when none are drawn.
+ * Whitespace-only lines only get guides while the caret is on them, so blank
+ * (auto-indented) lines don't paint stripes down the whole editor.
+ */
+export function indentGuideWidth(line: string, settings: EditorSettings, isCurrent: boolean): number {
+  if (!settings.rainbow.enabled) return 0;
+  const leading = line.match(/^[ \t]*/)![0];
+  if (leading.length === line.length && !isCurrent) return 0;
+  return visualWidth(leading, settings.tabSize);
+}
+
+/**
  * indent-rainbow style coloring for one line's leading whitespace.
  * Rendered absolutely behind the line's text, so it must be placed inside a
  * `relative` line container whose text starts at its left edge.
  */
-export function IndentGuides({ line, settings }: { line: string; settings: EditorSettings }) {
+export function IndentGuides({
+  line,
+  settings,
+  isCurrent = false,
+}: {
+  line: string;
+  settings: EditorSettings;
+  isCurrent?: boolean;
+}) {
   const { rainbow, tabSize } = settings;
-  if (!rainbow.enabled) return null;
-
-  const leading = line.match(/^[ \t]*/)![0];
-  const width = visualWidth(leading, tabSize);
+  const width = indentGuideWidth(line, settings, isCurrent);
   if (width === 0) return null;
+  const leading = line.match(/^[ \t]*/)![0];
 
   // Indentation that isn't a whole number of levels (e.g. 3 spaces with tab size 4).
   if (rainbow.highlightErrors && width % tabSize !== 0 && leading.length < line.length) {

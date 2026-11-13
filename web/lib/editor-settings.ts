@@ -10,6 +10,8 @@ export interface EditorSettings {
   tabSize: 2 | 4 | 8;
   /** Tab inserts spaces (VS Code's `editor.insertSpaces`) instead of a `\t` character. */
   insertSpaces: boolean;
+  /** Show the code-completion (IntelliSense) popup while typing. */
+  intellisense: boolean;
   rainbow: {
     enabled: boolean;
     style: RainbowStyle;
@@ -34,6 +36,7 @@ export const MAX_RAINBOW_COLORS = 8;
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   tabSize: 4,
   insertSpaces: true,
+  intellisense: true,
   rainbow: {
     enabled: true,
     style: "fill",
@@ -58,6 +61,7 @@ function normalize(raw: unknown): EditorSettings {
   return {
     tabSize: r.tabSize === 2 || r.tabSize === 4 || r.tabSize === 8 ? r.tabSize : d.tabSize,
     insertSpaces: typeof r.insertSpaces === "boolean" ? r.insertSpaces : d.insertSpaces,
+    intellisense: typeof r.intellisense === "boolean" ? r.intellisense : d.intellisense,
     rainbow: {
       enabled: typeof rb.enabled === "boolean" ? rb.enabled : d.rainbow.enabled,
       style: rb.style === "fill" || rb.style === "line" || rb.style === "both" ? rb.style : d.rainbow.style,
