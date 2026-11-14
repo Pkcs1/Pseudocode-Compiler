@@ -61,3 +61,13 @@ textarea.code-input::selection {
   color: transparent;
   background-color: rgb(56 189 248 / 0.25);
 }
+
+/* Code editor caret: VS Code-style blink (the element remounts on every move, restarting it). */
+@keyframes editor-caret-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+.editor-caret {
+  animation: editor-caret-blink 1.06s step-end infinite;
+  animation-delay: 0.5s;
+}

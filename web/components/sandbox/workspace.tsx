@@ -18,6 +18,7 @@ import { runTestCase, TestCase, TestResult } from "@/lib/test-runner";
 import { cn } from "@/lib/utils";
 import { SettingsModal } from "./settings-modal";
 import { SoundVolumeControl } from "./sound-volume-control";
+import { useSoundVolume, setSoundVolume } from "@/lib/sound-volume";
 import { InspectResult } from "@/lib/runner";
 import { useAudioSprite } from "@/lib/use-audio";
 import {
@@ -135,11 +136,7 @@ export function Workspace() {
   const [topPct, setTopPct] = useState(DEFAULT_TOP);
   const mainRef = useRef<HTMLDivElement | null>(null);
   const rightRef = useRef<HTMLDivElement | null>(null);
-  const [soundVolume, setSoundVolume] = useState<number>(() => {
-    if (typeof window === "undefined") return 0.7;
-    const saved = localStorage.getItem("pseudo-sound-volume");
-    return saved !== null ? Number(saved) : 0.7;
-  });
+  const soundVolume = useSoundVolume();
 
   const runnerHandleRef = useRef<ExecutionHandle | null>(null);
   const { down: soundDown, up: soundUp, playClickPreview } = useAudioSprite(
@@ -147,12 +144,7 @@ export function Workspace() {
     soundVolume
   );
 
-  const handleVolumeChange = (vol: number) => {
-    setSoundVolume(vol);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pseudo-sound-volume", String(vol));
-    }
-  };
+  const handleVolumeChange = setSoundVolume;
 
   // Ctrl/Cmd + , opens the settings popup from anywhere (like VS Code).
   useEffect(() => {
@@ -563,6 +555,7 @@ export function Workspace() {
               onKeyUpSound={soundUp}
               diagnostics={diagnostics}
               onJumpTo={handleJumpToDiagnostic}
+              code={code}
             />
           </section>
 

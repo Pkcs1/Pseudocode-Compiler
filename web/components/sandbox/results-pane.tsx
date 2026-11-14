@@ -12,12 +12,14 @@ import {
   CircleX,
   TriangleAlert,
   ListChecks,
+  FileCode2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InspectResult } from "@/lib/runner";
 import { VariableSnapshot, Diagnostic } from "@/lib/engine";
+import { GoView } from "./go-view";
 
-type ResultsTab = "problems" | "console" | "kamus";
+type ResultsTab = "problems" | "console" | "kamus" | "go";
 
 export interface TerminalEntry {
   id: string;
@@ -49,6 +51,8 @@ interface ResultsPaneProps {
   diagnostics: Diagnostic[];
   /** Move the editor caret to a problem's position. */
   onJumpTo: (line: number, col: number) => void;
+  /** Current pseudocode source, converted for the "Go" tab. */
+  code: string;
 }
 
 const TAB_CLASS = (active: boolean) =>
@@ -72,6 +76,7 @@ export function ResultsPane({
   onKeyUpSound,
   diagnostics,
   onJumpTo,
+  code,
 }: ResultsPaneProps) {
   const [activeTab, setActiveTab] = useState<ResultsTab>("console");
   const errorCount = diagnostics.filter((d) => d.severity === "error").length;
@@ -142,6 +147,8 @@ export function ResultsPane({
                 ? `${entries.length} baris log`
                 : activeTab === "problems"
                 ? `${diagnostics.length} masalah`
+                : activeTab === "go"
+                ? "konversi ke Go"
                 : `${totalVars} variabel`}
             </span>
             {lastExecutionMs !== null && lastExecutionMs !== undefined && (
@@ -192,8 +199,17 @@ export function ResultsPane({
               className={TAB_CLASS(activeTab === "kamus")}
             >
               <TableProperties className="w-3 h-3 text-[#5b45ff] dark:text-purple-400" />
-              <span className="sm:hidden">Kamus</span>
-              <span className="hidden sm:inline">Tabel Kamus</span>
+              <span title="Tabel Kamus">Kamus</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("go")}
+              title="Lihat program ini dalam bahasa Go"
+              className={TAB_CLASS(activeTab === "go")}
+            >
+              <FileCode2 className="w-3 h-3 text-[#0891b2] dark:text-cyan-400" />
+              <span>Go</span>
             </button>
           </div>
         </div>
@@ -420,6 +436,9 @@ export function ResultsPane({
             )}
           </div>
         )}
+
+        {/* VIEW 3: Go conversion */}
+        {activeTab === "go" && <GoView code={code} />}
 
         {/* VIEW 2: KAMUS & SIMBOL (Structured Table with Sparkbars like Image 2 RESULTS) */}
         {activeTab === "kamus" && (
