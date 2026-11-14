@@ -20,7 +20,7 @@ type TabId = "appearance" | "editor" | "rainbow";
 
 const TABS: { id: TabId; label: string; description: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "appearance", label: "Tampilan", description: "Pilih tema terang, gelap, atau ikuti sistem.", icon: Palette },
-  { id: "editor", label: "Indentasi", description: "Atur cara tombol Tab dan Backspace bekerja di editor.", icon: IndentIncrease },
+  { id: "editor", label: "Editor", description: "Atur IntelliSense serta cara tombol Tab dan Backspace bekerja di editor.", icon: IndentIncrease },
   { id: "rainbow", label: "Indent Rainbow", description: "Warnai setiap tingkat indentasi agar struktur kode mudah dibaca.", icon: Rainbow },
 ];
 
@@ -228,6 +228,13 @@ function EditorTab({ settings }: { settings: EditorSettings }) {
           onChange={(v) => updateEditorSettings((s) => ({ ...s, insertSpaces: v === "spaces" }))}
         />
       </Row>
+      <Row title="IntelliSense" hint="Tampilkan saran kode otomatis saat mengetik.">
+        <Switch
+          checked={settings.intellisense}
+          onChange={(v) => updateEditorSettings((s) => ({ ...s, intellisense: v }))}
+          label="IntelliSense"
+        />
+      </Row>
       <div className="py-3">
         <div className="text-xs font-semibold text-[#0f172a] dark:text-neutral-200 mb-2">Pintasan keyboard</div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[11px] text-[#475569] dark:text-neutral-400">
@@ -239,6 +246,10 @@ function EditorTab({ settings }: { settings: EditorSettings }) {
           <dd>Di awal baris, hapus satu tingkat indentasi sekaligus</dd>
           <dt><Kbd>Enter</Kbd></dt>
           <dd>Baris baru mengikuti indentasi baris sebelumnya</dd>
+          <dt><Kbd>Ctrl + Space</Kbd></dt>
+          <dd>Buka saran kode (IntelliSense)</dd>
+          <dt><Kbd>↑ / ↓</Kbd></dt>
+          <dd>Pilih saran; <Kbd>Enter</Kbd>/<Kbd>Tab</Kbd> sisipkan, <Kbd>Esc</Kbd> tutup</dd>
           <dt><Kbd>Ctrl + ,</Kbd></dt>
           <dd>Buka pengaturan ini</dd>
         </dl>
@@ -428,6 +439,7 @@ export function SettingsModal({
         ...s,
         tabSize: DEFAULT_EDITOR_SETTINGS.tabSize,
         insertSpaces: DEFAULT_EDITOR_SETTINGS.insertSpaces,
+        intellisense: DEFAULT_EDITOR_SETTINGS.intellisense,
       }));
     else updateEditorSettings((s) => ({ ...s, rainbow: DEFAULT_EDITOR_SETTINGS.rainbow }));
   };

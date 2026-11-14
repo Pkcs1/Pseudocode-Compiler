@@ -11,9 +11,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorSettings, visualWidth } from "@/lib/editor-settings";
-import { IndentGuides } from "./indent-guides";
+import { IndentGuides, indentGuideWidth } from "./indent-guides";
 import { tokenizeLine, TOKEN_STYLE } from "@/lib/syntax-highlighter";
 import type { Diagnostic } from "@/lib/engine";
+import {
+  getCompletions,
+  expandInsert,
+  type CompletionContext,
+  type CompletionItem,
+  type CompletionKind,
+} from "@/lib/intellisense";
 
 export interface JumpRequest {
   line: number;
@@ -23,6 +30,23 @@ export interface JumpRequest {
 }
 
 const LINE_HEIGHT_PX = 24;
+/** Editor text padding (py-3 / px-4). */
+const PAD_TOP_PX = 12;
+const PAD_LEFT_PX = 16;
+const SUGGEST_ROW_PX = 26;
+const SUGGEST_MAX_ROWS = 8;
+
+const KIND_BADGE: Record<CompletionKind, { label: string; className: string }> = {
+  keyword: { label: "kw", className: "text-[#5b45ff] bg-[#5b45ff]/10 dark:text-purple-300 dark:bg-purple-400/15" },
+  snippet: { label: "{}", className: "text-amber-700 bg-amber-500/15 dark:text-amber-300 dark:bg-amber-400/15" },
+  function: { label: "ƒ", className: "text-sky-700 bg-sky-500/15 dark:text-sky-300 dark:bg-sky-400/15" },
+  type: { label: "T", className: "text-teal-700 bg-teal-500/15 dark:text-teal-300 dark:bg-teal-400/15" },
+  variable: { label: "x", className: "text-emerald-700 bg-emerald-500/15 dark:text-emerald-300 dark:bg-emerald-400/15" },
+  constant: { label: "π", className: "text-rose-700 bg-rose-500/15 dark:text-rose-300 dark:bg-rose-400/15" },
+  field: { label: ".", className: "text-indigo-700 bg-indigo-500/15 dark:text-indigo-300 dark:bg-indigo-400/15" },
+};
+
+type SuggestState = CompletionContext & { index: number };
 
 /** Column (1-based) → visual offset in characters, expanding tabs. */
 function visualOffset(lineText: string, col: number, tabSize: number): number {
@@ -120,7 +144,75 @@ export function PseudocodeEditor({
   const [copied, setCopied] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const settings = useEditorSettings();
-  const { tabSize, insertSpaces } = settings;
+  const { tabSize, insertSpaces, intellisense } = settings;
+
+  // IntelliSense suggestion popup
+  const [suggest, setSuggest] = useState<SuggestState | null>(null);
+  const suggestRef = useRef<SuggestState | null>(null);
+  // Keep the ref in step synchronously: key handlers read it before React re-renders.
+  const updateSuggest = useCallback((next: SuggestState | null) => {
+    suggestRef.current = next;
+    setSuggest(next);
+  }, []);
+  const suppressSuggestRef = useRef(false);
+  const suggestListRef = useRef<HTMLDivElement | null>(null);
+  const [editorScroll, setEditorScroll] = useState({ top: 0, left: 0, height: 0 });
+
+  /** Recompute suggestions at the caret. `open` = allowed to open a closed popup. */
+  const refreshSuggest = useCallback((open: boolean, explicit = false) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (!intellisense) {
+      if (suggestRef.current) updateSuggest(null);
+      return;
+    }
+    if (!open && !suggestRef.current) return;
+    if (ta.selectionStart !== ta.selectionEnd) {
+      updateSuggest(null);
+      return;
+    }
+    const ctx = getCompletions(ta.value, ta.selectionStart, explicit);
+    const prev = suggestRef.current;
+    if (!ctx || (!open && prev && prev.from !== ctx.from)) {
+      updateSuggest(null);
+      return;
+    }
+    // Keep the highlighted item if it's still in the list.
+    const keep = prev ? ctx.items.findIndex((it) => it === prev.items[prev.index]) : -1;
+    updateSuggest({ ...ctx, index: Math.max(0, keep) });
+    setEditorScroll({ top: ta.scrollTop, left: ta.scrollLeft, height: ta.clientHeight });
+  }, [intellisense, updateSuggest]);
+
+  // Close any open popup when IntelliSense is switched off in settings.
+  useEffect(() => {
+    if (!intellisense && suggestRef.current) updateSuggest(null);
+  }, [intellisense, updateSuggest]);
+
+  const acceptSuggestion = useCallback(
+    (item: CompletionItem) => {
+      const ta = textareaRef.current;
+      const s = suggestRef.current;
+      if (!ta || !s) return;
+      const lineStart = lineStartOf(ta.value, s.from);
+      const baseIndent = ta.value.slice(lineStart, s.from).match(/^[ \t]*/)![0];
+      const { text, caret } = expandInsert(item, baseIndent, insertSpaces ? " ".repeat(tabSize) : "\t");
+      suppressSuggestRef.current = true;
+      replaceRange(ta, s.from, s.to, text, s.from + caret);
+      suppressSuggestRef.current = false;
+      updateSuggest(null);
+    },
+    [insertSpaces, tabSize, updateSuggest]
+  );
+
+  // Keep the highlighted suggestion scrolled into view.
+  useEffect(() => {
+    const list = suggestListRef.current;
+    if (!list || !suggest) return;
+    const top = suggest.index * SUGGEST_ROW_PX;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (top + SUGGEST_ROW_PX > list.scrollTop + list.clientHeight)
+      list.scrollTop = top + SUGGEST_ROW_PX - list.clientHeight;
+  }, [suggest]);
 
   const lines = useMemo(() => code.split("\n"), [code]);
   const lineCount = lines.length;
@@ -164,6 +256,8 @@ export function PseudocodeEditor({
   // Sync scrolling between textarea, gutter, and highlighted code overlay
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     const { scrollTop, scrollLeft } = e.currentTarget;
+    if (suggestRef.current)
+      setEditorScroll({ top: scrollTop, left: scrollLeft, height: e.currentTarget.clientHeight });
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = scrollTop;
     }
@@ -197,7 +291,11 @@ export function PseudocodeEditor({
     const textarea = textareaRef.current;
     if (!textarea) return;
     const onSelectionChange = () => {
-      if (document.activeElement === textarea) updateCursorPosition();
+      if (document.activeElement !== textarea) return;
+      updateCursorPosition();
+      // Caret moved away from the word being completed → update or close the popup.
+      const s = suggestRef.current;
+      if (s && !suppressSuggestRef.current && textarea.selectionStart !== s.to) refreshSuggest(false);
     };
     document.addEventListener("selectionchange", onSelectionChange);
     textarea.addEventListener("selectionchange", onSelectionChange);
@@ -205,7 +303,7 @@ export function PseudocodeEditor({
       document.removeEventListener("selectionchange", onSelectionChange);
       textarea.removeEventListener("selectionchange", onSelectionChange);
     };
-  }, [updateCursorPosition]);
+  }, [updateCursorPosition, refreshSuggest]);
 
   // Keyboard navigation & auto-indent
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -231,6 +329,41 @@ export function PseudocodeEditor({
 
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+    // Ctrl+Space: open suggestions on demand.
+    if (e.ctrlKey && (e.key === " " || e.code === "Space")) {
+      e.preventDefault();
+      refreshSuggest(true, true);
+      return;
+    }
+
+    // Suggestion popup navigation
+    const s = suggestRef.current;
+    if (s && !e.nativeEvent.isComposing) {
+      const n = s.items.length;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const step = e.key === "ArrowDown" ? 1 : -1;
+        updateSuggest({ ...s, index: (s.index + step + n) % n });
+        return;
+      }
+      if (e.key === "PageDown" || e.key === "PageUp") {
+        e.preventDefault();
+        const step = e.key === "PageDown" ? SUGGEST_MAX_ROWS : -SUGGEST_MAX_ROWS;
+        updateSuggest({ ...s, index: Math.min(n - 1, Math.max(0, s.index + step)) });
+        return;
+      }
+      if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        acceptSuggestion(s.items[s.index]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        updateSuggest(null);
+        return;
+      }
+    }
 
     if (e.nativeEvent.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
 
@@ -462,6 +595,9 @@ export function PseudocodeEditor({
               const diagStyle = top ? DIAG_STYLE[top.severity] : null;
               const isCurrent = cursorPos.line === lineNum;
               const tokens = tokenizeLine(line);
+              // The current-line highlight starts after the indent guides so it
+              // doesn't tint their colors.
+              const guideWidth = isCurrent ? indentGuideWidth(line, settings, true) : 0;
 
               return (
                 <div
@@ -469,9 +605,16 @@ export function PseudocodeEditor({
                   className={cn(
                     "h-6 leading-6 whitespace-pre relative flex items-center",
                     diagStyle && cn(diagStyle.lineBg, "rounded-sm"),
-                    isCurrent && !diagStyle && "bg-[#f8f8f6] dark:bg-neutral-800/20"
+                    isCurrent && !diagStyle && guideWidth === 0 && "bg-[#f8f8f6] dark:bg-neutral-800/20"
                   )}
                 >
+                  {isCurrent && !diagStyle && guideWidth > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-0 bottom-0 right-0 pointer-events-none bg-[#f8f8f6] dark:bg-neutral-800/20"
+                      style={{ left: `${guideWidth}ch` }}
+                    />
+                  )}
                   {/* Squiggly underline under each problem's location */}
                   {lineDiags?.map((d, dIdx) => {
                     const start = visualOffset(line, d.col, tabSize);
@@ -496,7 +639,7 @@ export function PseudocodeEditor({
                   })}
 
                   {/* indent-rainbow style coloring (configurable in the settings popup) */}
-                  <IndentGuides line={line} settings={settings} />
+                  <IndentGuides line={line} settings={settings} isCurrent={isCurrent} />
 
                   {/* Highlighted Tokens with dynamic Theme Palette */}
                   <span className="relative z-10">
@@ -549,7 +692,14 @@ export function PseudocodeEditor({
             onChange={(e) => {
               onChange(e.target.value);
               updateCursorPosition();
+              if (suppressSuggestRef.current) return;
+              const ev = e.nativeEvent as InputEvent;
+              const typed = ev.inputType === "insertText" && !!ev.data && /[A-Za-z0-9_.]$/.test(ev.data);
+              if (typed) refreshSuggest(true);
+              else if (ev.inputType?.startsWith("delete")) refreshSuggest(false);
+              else updateSuggest(null);
             }}
+            onBlur={() => updateSuggest(null)}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onClick={updateCursorPosition}
@@ -561,6 +711,19 @@ export function PseudocodeEditor({
             placeholder="Tulis kode pseudocode di sini (atau muat contoh)..."
             className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 code-input overflow-auto whitespace-pre m-0"
           />
+
+          {/* 3. IntelliSense suggestion popup */}
+          {suggest && (
+            <SuggestWidget
+              suggest={suggest}
+              code={code}
+              tabSize={tabSize}
+              scroll={editorScroll}
+              listRef={suggestListRef}
+              onHover={(index) => updateSuggest({ ...suggest, index })}
+              onAccept={acceptSuggestion}
+            />
+          )}
         </div>
       </div>
 
@@ -592,6 +755,104 @@ export function PseudocodeEditor({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The IntelliSense suggestion list, positioned under (or above) the word being completed. */
+function SuggestWidget({
+  suggest,
+  code,
+  tabSize,
+  scroll,
+  listRef,
+  onHover,
+  onAccept,
+}: {
+  suggest: SuggestState;
+  code: string;
+  tabSize: number;
+  scroll: { top: number; left: number; height: number };
+  listRef: React.RefObject<HTMLDivElement | null>;
+  onHover: (index: number) => void;
+  onAccept: (item: CompletionItem) => void;
+}) {
+  const lineIdx = code.slice(0, suggest.from).split("\n").length - 1;
+  const lineText = code.split("\n")[lineIdx] ?? "";
+  const col = visualWidth(lineText.slice(0, suggest.from - lineStartOf(code, suggest.from)), tabSize);
+  const rows = Math.min(suggest.items.length, SUGGEST_MAX_ROWS);
+  const lineTop = PAD_TOP_PX + lineIdx * LINE_HEIGHT_PX - scroll.top;
+  const viewH = scroll.height;
+  const popupH = rows * SUGGEST_ROW_PX + 60;
+  const above = lineTop + LINE_HEIGHT_PX + popupH > viewH && lineTop - popupH > 0;
+  const selected = suggest.items[suggest.index];
+  return (
+    <div
+      className="absolute z-30 w-72 max-w-[calc(100%-1rem)] rounded-lg border border-[#e2e2dc] bg-white shadow-lg dark:border-neutral-700 dark:bg-[#161a21] dark:shadow-black/50 text-xs overflow-hidden"
+      style={{
+        left: `max(0.5rem, min(calc(${PAD_LEFT_PX - scroll.left}px + ${col}ch), calc(100% - 18.5rem)))`,
+        ...(above
+          ? { bottom: `calc(100% - ${lineTop}px)` }
+          : { top: lineTop + LINE_HEIGHT_PX }),
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+      role="listbox"
+      aria-label="Saran kode"
+    >
+      <div
+        ref={listRef}
+        className="overflow-y-auto"
+        style={{ maxHeight: SUGGEST_MAX_ROWS * SUGGEST_ROW_PX }}
+      >
+        {suggest.items.map((item, i) => {
+          const badge = KIND_BADGE[item.kind];
+          const active = i === suggest.index;
+          const matchLen = item.label.toLowerCase().startsWith(suggest.prefix.toLowerCase())
+            ? suggest.prefix.length
+            : 0;
+          return (
+            <div
+              key={`${item.kind}:${item.label}`}
+              role="option"
+              aria-selected={active}
+              className={cn(
+                "flex items-center gap-2 px-2 cursor-pointer",
+                active
+                  ? "bg-[#5b45ff]/10 text-[#0f172a] dark:bg-sky-500/15 dark:text-white"
+                  : "text-[#334155] hover:bg-[#f1f1ee] dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+              )}
+              style={{ height: SUGGEST_ROW_PX }}
+              onMouseEnter={() => onHover(i)}
+              onClick={() => onAccept(item)}
+            >
+              <span
+                className={cn(
+                  "w-5 h-4 shrink-0 rounded text-[10px] font-bold leading-4 text-center",
+                  badge.className
+                )}
+              >
+                {badge.label}
+              </span>
+              <span className="truncate">
+                <span className="font-bold text-[#5b45ff] dark:text-sky-300">
+                  {item.label.slice(0, matchLen)}
+                </span>
+                {item.label.slice(matchLen)}
+              </span>
+              {item.detail && (
+                <span className="ml-auto pl-2 truncate text-[10px] text-[#94a3b8] dark:text-neutral-500">
+                  {item.detail}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {selected?.doc && (
+        <div className="px-2.5 py-1.5 border-t border-[#ecece7] bg-[#fbfbfa] text-[11px] leading-snug text-[#475569] dark:border-neutral-800 dark:bg-[#12151b] dark:text-neutral-400 whitespace-normal">
+          {selected.doc}
+        </div>
+      )}
     </div>
   );
 }
