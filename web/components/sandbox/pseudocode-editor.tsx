@@ -8,9 +8,21 @@ import {
   Square,
   CircleX,
   TriangleAlert,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEditorSettings, visualWidth } from "@/lib/editor-settings";
+import {
+  useEditorSettings,
+  updateEditorSettings,
+  visualWidth,
+  lineHeightFor,
+  clampFontSize,
+  DEFAULT_EDITOR_SETTINGS,
+  FONT_SIZE_MIN,
+  FONT_SIZE_MAX,
+} from "@/lib/editor-settings";
+import { blockEnterEdit, electricDedent } from "@/lib/auto-close";
 import { IndentGuides, indentGuideWidth } from "./indent-guides";
 import { tokenizeLine, TOKEN_STYLE } from "@/lib/syntax-highlighter";
 import type { Diagnostic } from "@/lib/engine";
@@ -29,7 +41,6 @@ export interface JumpRequest {
   nonce: number;
 }
 
-const LINE_HEIGHT_PX = 24;
 /** Editor text padding (py-3 / px-4). */
 const PAD_TOP_PX = 12;
 const PAD_LEFT_PX = 16;
@@ -142,9 +153,31 @@ export function PseudocodeEditor({
   const lineNumbersRef = useRef<HTMLDivElement | null>(null);
   const backdropRef = useRef<HTMLPreElement | null>(null);
   const [copied, setCopied] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: false });
+  const [focused, setFocused] = useState(false);
   const settings = useEditorSettings();
-  const { tabSize, insertSpaces, intellisense } = settings;
+  const { tabSize, insertSpaces, intellisense, autoCloseBlocks, fontSize } = settings;
+  const lineHeight = lineHeightFor(fontSize);
+  const editorBodyRef = useRef<HTMLDivElement | null>(null);
+  // Width of one code character in px (the suggestion popup uses its own, smaller font).
+  const measureRef = useRef<HTMLSpanElement | null>(null);
+  const [charPx, setCharPx] = useState(fontSize * 0.6);
+  useEffect(() => {
+    const measure = () => {
+      const w = measureRef.current?.getBoundingClientRect().width;
+      if (w) setCharPx(w / 10);
+    };
+    measure();
+    document.fonts?.ready.then(measure);
+  }, [fontSize]);
+
+  /** Zoom only the code area: `delta` steps the font size, `null` resets it. */
+  const zoom = useCallback((delta: number | null) => {
+    updateEditorSettings((s) => ({
+      ...s,
+      fontSize: delta === null ? DEFAULT_EDITOR_SETTINGS.fontSize : clampFontSize(s.fontSize + delta),
+    }));
+  }, []);
 
   // IntelliSense suggestion popup
   const [suggest, setSuggest] = useState<SuggestState | null>(null);
@@ -248,9 +281,11 @@ export function PseudocodeEditor({
     textarea.setSelectionRange(offset, offset);
     textarea.scrollTop = Math.max(
       0,
-      lineIdx * LINE_HEIGHT_PX - textarea.clientHeight / 2 + LINE_HEIGHT_PX
+      lineIdx * lineHeight - textarea.clientHeight / 2 + lineHeight
     );
-    setCursorPos({ line: lineIdx + 1, col: jumpTo.col });
+    setCursorPos({ line: lineIdx + 1, col: jumpTo.col, sel: false });
+    // Only re-run for a new jump request, not when the zoom level changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpTo]);
 
   // Sync scrolling between textarea, gutter, and highlighted code overlay
@@ -282,7 +317,10 @@ export function PseudocodeEditor({
     let line = 1;
     for (let i = 0; i < textBefore.length; i++) if (textBefore[i] === "\n") line++;
     const col = pos - lastNewline;
-    setCursorPos((prev) => (prev.line === line && prev.col === col ? prev : { line, col }));
+    const sel = textarea.selectionStart !== textarea.selectionEnd;
+    setCursorPos((prev) =>
+      prev.line === line && prev.col === col && prev.sel === sel ? prev : { line, col, sel }
+    );
   }, []);
 
   // Follow every caret move: arrow keys (incl. held keys), mouse clicks and
@@ -305,10 +343,51 @@ export function PseudocodeEditor({
     };
   }, [updateCursorPosition, refreshSuggest]);
 
+  // Ctrl/Cmd + wheel (and trackpad pinch, which Chrome reports the same way) over
+  // the code zooms the code instead of the page. Needs a non-passive listener.
+  useEffect(() => {
+    const el = editorBodyRef.current;
+    if (!el) return;
+    let acc = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      acc += e.deltaY;
+      // One step per mouse-wheel notch; pinch gestures send many small deltas.
+      while (Math.abs(acc) >= 40) {
+        zoom(acc > 0 ? -1 : 1);
+        acc -= Math.sign(acc) * 40;
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoom]);
+
+  // Keep the caret in view after zooming (line positions all move).
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta || document.activeElement !== ta) return;
+    const all = ta.value.slice(0, ta.selectionEnd).split("\n");
+    const caretTop = PAD_TOP_PX + (all.length - 1) * lineHeight;
+    if (caretTop < ta.scrollTop || caretTop + lineHeight > ta.scrollTop + ta.clientHeight) {
+      ta.scrollTop = Math.max(0, caretTop - ta.clientHeight / 2);
+    }
+  }, [lineHeight]);
+
   // Keyboard navigation & auto-indent
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!e.repeat) {
       onKeyDownSound?.(e.key);
+    }
+
+    // Ctrl/Cmd + = / - / 0: zoom the code only (instead of the whole page).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const step = e.key === "=" || e.key === "+" ? 1 : e.key === "-" || e.key === "_" ? -1 : e.key === "0" ? 0 : null;
+      if (step !== null) {
+        e.preventDefault();
+        zoom(step === 0 ? null : step);
+        return;
+      }
     }
 
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "Enter" && onRunTests) {
@@ -444,6 +523,14 @@ export function PseudocodeEditor({
     }
 
     if (e.key === "Enter" && !e.shiftKey) {
+      // After a block opener: indent the body and, if needed, add the closing keyword.
+      const block = start === end ? blockEnterEdit(value, start, indentUnit, tabSize, autoCloseBlocks) : null;
+      if (block) {
+        e.preventDefault();
+        replaceRange(textarea, start, end, block.text, start + block.caret);
+        updateCursorPosition();
+        return;
+      }
       // Keep the current line's indentation on the new line.
       const lineStart = lineStartOf(value, start);
       const indent = value.slice(lineStart, start).match(/^[ \t]*/)![0];
@@ -521,6 +608,38 @@ export function PseudocodeEditor({
             </button>
           )}
 
+          {/* Zoom (code only) */}
+          <div className="inline-flex items-center rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] text-[#475569] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 font-mono text-xs">
+            <button
+              type="button"
+              onClick={() => zoom(-1)}
+              disabled={fontSize <= FONT_SIZE_MIN}
+              title="Perkecil kode (Ctrl + -)"
+              aria-label="Perkecil kode"
+              className="px-1.5 py-1 rounded-l-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => zoom(null)}
+              title="Kembalikan ukuran kode (Ctrl + 0)"
+              className="min-w-[3.25rem] px-1 py-1 text-center tabular-nums hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white cursor-pointer"
+            >
+              {Math.round((fontSize / DEFAULT_EDITOR_SETTINGS.fontSize) * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => zoom(1)}
+              disabled={fontSize >= FONT_SIZE_MAX}
+              title="Perbesar kode (Ctrl + =)"
+              aria-label="Perbesar kode"
+              className="px-1.5 py-1 rounded-r-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Copy Button */}
           <button
             type="button"
@@ -544,11 +663,16 @@ export function PseudocodeEditor({
       </div>
 
       {/* Code Editor Body */}
-      <div className="relative flex-1 min-h-0 flex overflow-hidden font-mono text-sm bg-[#ffffff] dark:bg-[#0d0f12]">
+      <div
+        ref={editorBodyRef}
+        className="relative flex-1 min-h-0 flex overflow-hidden font-mono bg-[#ffffff] dark:bg-[#0d0f12]"
+        style={{ fontSize, "--lh": `${lineHeight}px` } as React.CSSProperties}
+      >
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}
-          className="w-12 select-none py-3 bg-[#f8f8f6] border-r border-[#e5e5df] text-right pr-3 font-mono text-xs text-[#94a3b8] dark:bg-[#0a0c0f] dark:border-neutral-800/70 dark:text-neutral-500 overflow-hidden"
+          className="shrink-0 select-none py-3 bg-[#f8f8f6] border-r border-[#e5e5df] text-right pr-3 font-mono text-[#94a3b8] dark:bg-[#0a0c0f] dark:border-neutral-800/70 dark:text-neutral-500 overflow-hidden"
+          style={{ width: Math.round((48 * fontSize) / 14), fontSize: Math.round((fontSize * 6) / 7) }}
         >
           {Array.from({ length: lineCount }).map((_, i) => {
             const lineNum = i + 1;
@@ -561,7 +685,7 @@ export function PseudocodeEditor({
                 key={lineNum}
                 title={lineDiags?.map((d) => `• ${d.message}`).join("\n")}
                 className={cn(
-                  "h-6 leading-6 flex items-center justify-end relative transition-colors",
+                  "h-[var(--lh)] leading-[var(--lh)] flex items-center justify-end relative transition-colors",
                   style && cn(style.gutter, style.lineBg, "font-bold"),
                   isCurrent && !style && "text-[#0f172a] font-semibold dark:text-neutral-300"
                 )}
@@ -585,8 +709,8 @@ export function PseudocodeEditor({
             ref={backdropRef}
             aria-hidden="true"
             tabIndex={-1}
-            style={{ tabSize }}
-            className="absolute inset-0 pointer-events-none py-3 px-4 font-mono text-sm leading-6 overflow-hidden select-none whitespace-pre m-0 border-0"
+            style={{ tabSize, fontSize }}
+            className="absolute inset-0 pointer-events-none py-3 px-4 font-mono leading-[var(--lh)] overflow-hidden select-none whitespace-pre m-0 border-0"
           >
             {lines.map((line, idx) => {
               const lineNum = idx + 1;
@@ -603,7 +727,7 @@ export function PseudocodeEditor({
                 <div
                   key={idx}
                   className={cn(
-                    "h-6 leading-6 whitespace-pre relative flex items-center",
+                    "h-[var(--lh)] leading-[var(--lh)] whitespace-pre relative flex items-center",
                     diagStyle && cn(diagStyle.lineBg, "rounded-sm"),
                     isCurrent && !diagStyle && guideWidth === 0 && "bg-[#f8f8f6] dark:bg-neutral-800/20"
                   )}
@@ -623,7 +747,7 @@ export function PseudocodeEditor({
                     return (
                       <span
                         key={`sq-${dIdx}`}
-                        className="absolute top-0 h-6 leading-6 text-transparent pointer-events-none z-20"
+                        className="absolute top-0 h-[var(--lh)] leading-[var(--lh)] text-transparent pointer-events-none z-20"
                         style={{
                           left: `${start}ch`,
                           textDecorationLine: "underline",
@@ -637,6 +761,21 @@ export function PseudocodeEditor({
                       </span>
                     );
                   })}
+
+                  {/* Caret: drawn here (not the textarea's native one) so it's vertically
+                      centered on the line at every zoom level. Remounts on every move so
+                      the blink restarts, like VS Code. */}
+                  {isCurrent && focused && !cursorPos.sel && (
+                    <span
+                      key={`${cursorPos.col}:${code.length}`}
+                      aria-hidden="true"
+                      className="editor-caret absolute top-1/2 -translate-y-1/2 w-[2px] rounded-full bg-[#5b45ff] dark:bg-sky-400 pointer-events-none z-30"
+                      style={{
+                        left: `${visualWidth(line.slice(0, cursorPos.col - 1), tabSize) + Math.max(0, cursorPos.col - 1 - line.length)}ch`,
+                        height: Math.round(fontSize * 1.3),
+                      }}
+                    />
+                  )}
 
                   {/* indent-rainbow style coloring (configurable in the settings popup) */}
                   <IndentGuides line={line} settings={settings} isCurrent={isCurrent} />
@@ -668,7 +807,7 @@ export function PseudocodeEditor({
                   {top && diagStyle && (
                     <span
                       className={cn(
-                        "relative z-10 ml-10 text-[12px] italic font-medium tracking-tight",
+                        "relative z-10 ml-10 text-[0.857em] italic font-medium tracking-tight",
                         diagStyle.message
                       )}
                     >
@@ -683,6 +822,9 @@ export function PseudocodeEditor({
                 </div>
               );
             })}
+            <span ref={measureRef} aria-hidden="true" className="absolute invisible left-0 top-0">
+              0000000000
+            </span>
           </pre>
 
           {/* 2. Interactive Textarea Overlay */}
@@ -694,12 +836,39 @@ export function PseudocodeEditor({
               updateCursorPosition();
               if (suppressSuggestRef.current) return;
               const ev = e.nativeEvent as InputEvent;
+              // Typed (or completed) a closing keyword like `endif` / `algoritma`:
+              // re-align the line with its opener once React has applied this edit.
+              const ta = e.target;
+              if (ev.inputType === "insertText" && ta.selectionStart === ta.selectionEnd) {
+                if (electricDedent(ta.value, ta.selectionStart)) {
+                  requestAnimationFrame(() => {
+                    // Re-check against the text as it is now (the user may have kept typing).
+                    if (ta.selectionStart !== ta.selectionEnd) return;
+                    const dedent = electricDedent(ta.value, ta.selectionStart);
+                    if (!dedent) return;
+                    const caret = ta.selectionStart + dedent.indent.length - (dedent.end - dedent.start);
+                    suppressSuggestRef.current = true;
+                    replaceRange(ta, dedent.start, dedent.end, dedent.indent, caret);
+                    suppressSuggestRef.current = false;
+                    updateSuggest(null);
+                    updateCursorPosition();
+                  });
+                  return;
+                }
+              }
               const typed = ev.inputType === "insertText" && !!ev.data && /[A-Za-z0-9_.]$/.test(ev.data);
               if (typed) refreshSuggest(true);
               else if (ev.inputType?.startsWith("delete")) refreshSuggest(false);
               else updateSuggest(null);
             }}
-            onBlur={() => updateSuggest(null)}
+            onFocus={() => {
+              setFocused(true);
+              updateCursorPosition();
+            }}
+            onBlur={() => {
+              setFocused(false);
+              updateSuggest(null);
+            }}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onClick={updateCursorPosition}
@@ -707,9 +876,9 @@ export function PseudocodeEditor({
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            style={{ tabSize }}
+            style={{ tabSize, fontSize }}
             placeholder="Tulis kode pseudocode di sini (atau muat contoh)..."
-            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-[#5b45ff] dark:caret-sky-400 placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono text-sm leading-6 code-input overflow-auto whitespace-pre m-0"
+            className="relative z-20 w-full h-full resize-none py-3 px-4 bg-transparent outline-none border-none text-transparent caret-transparent placeholder:text-[#94a3b8] dark:placeholder:text-neutral-600 font-mono leading-[var(--lh)] code-input overflow-auto whitespace-pre m-0"
           />
 
           {/* 3. IntelliSense suggestion popup */}
@@ -718,6 +887,8 @@ export function PseudocodeEditor({
               suggest={suggest}
               code={code}
               tabSize={tabSize}
+              lineHeight={lineHeight}
+              charPx={charPx}
               scroll={editorScroll}
               listRef={suggestListRef}
               onHover={(index) => updateSuggest({ ...suggest, index })}
@@ -764,6 +935,8 @@ function SuggestWidget({
   suggest,
   code,
   tabSize,
+  lineHeight,
+  charPx,
   scroll,
   listRef,
   onHover,
@@ -772,6 +945,8 @@ function SuggestWidget({
   suggest: SuggestState;
   code: string;
   tabSize: number;
+  lineHeight: number;
+  charPx: number;
   scroll: { top: number; left: number; height: number };
   listRef: React.RefObject<HTMLDivElement | null>;
   onHover: (index: number) => void;
@@ -781,19 +956,19 @@ function SuggestWidget({
   const lineText = code.split("\n")[lineIdx] ?? "";
   const col = visualWidth(lineText.slice(0, suggest.from - lineStartOf(code, suggest.from)), tabSize);
   const rows = Math.min(suggest.items.length, SUGGEST_MAX_ROWS);
-  const lineTop = PAD_TOP_PX + lineIdx * LINE_HEIGHT_PX - scroll.top;
+  const lineTop = PAD_TOP_PX + lineIdx * lineHeight - scroll.top;
   const viewH = scroll.height;
   const popupH = rows * SUGGEST_ROW_PX + 60;
-  const above = lineTop + LINE_HEIGHT_PX + popupH > viewH && lineTop - popupH > 0;
+  const above = lineTop + lineHeight + popupH > viewH && lineTop - popupH > 0;
   const selected = suggest.items[suggest.index];
   return (
     <div
       className="absolute z-30 w-72 max-w-[calc(100%-1rem)] rounded-lg border border-[#e2e2dc] bg-white shadow-lg dark:border-neutral-700 dark:bg-[#161a21] dark:shadow-black/50 text-xs overflow-hidden"
       style={{
-        left: `max(0.5rem, min(calc(${PAD_LEFT_PX - scroll.left}px + ${col}ch), calc(100% - 18.5rem)))`,
+        left: `max(0.5rem, min(${PAD_LEFT_PX - scroll.left + col * charPx}px, calc(100% - 18.5rem)))`,
         ...(above
           ? { bottom: `calc(100% - ${lineTop}px)` }
-          : { top: lineTop + LINE_HEIGHT_PX }),
+          : { top: lineTop + lineHeight }),
       }}
       onMouseDown={(e) => e.preventDefault()}
       role="listbox"

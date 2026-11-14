@@ -12,6 +12,10 @@ export interface EditorSettings {
   insertSpaces: boolean;
   /** Show the code-completion (IntelliSense) popup while typing. */
   intellisense: boolean;
+  /** Enter after a block opener (`if … then`, `for … do`, …) inserts the closing keyword. */
+  autoCloseBlocks: boolean;
+  /** Code font size in px (editor zoom). Only the code area scales, not the rest of the page. */
+  fontSize: number;
   rainbow: {
     enabled: boolean;
     style: RainbowStyle;
@@ -37,6 +41,8 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   tabSize: 4,
   insertSpaces: true,
   intellisense: true,
+  autoCloseBlocks: true,
+  fontSize: 14,
   rainbow: {
     enabled: true,
     style: "fill",
@@ -45,6 +51,14 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
     highlightErrors: true,
   },
 };
+
+export const FONT_SIZE_MIN = 10;
+export const FONT_SIZE_MAX = 32;
+
+export const clampFontSize = (px: number) => Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, Math.round(px)));
+
+/** Line height for a code font size: 14px → 24px, scaling proportionally. */
+export const lineHeightFor = (fontSize: number) => Math.round((fontSize * 12) / 7);
 
 const STORAGE_KEY = "pseudo-editor-settings";
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -62,6 +76,8 @@ function normalize(raw: unknown): EditorSettings {
     tabSize: r.tabSize === 2 || r.tabSize === 4 || r.tabSize === 8 ? r.tabSize : d.tabSize,
     insertSpaces: typeof r.insertSpaces === "boolean" ? r.insertSpaces : d.insertSpaces,
     intellisense: typeof r.intellisense === "boolean" ? r.intellisense : d.intellisense,
+    autoCloseBlocks: typeof r.autoCloseBlocks === "boolean" ? r.autoCloseBlocks : d.autoCloseBlocks,
+    fontSize: typeof r.fontSize === "number" && Number.isFinite(r.fontSize) ? clampFontSize(r.fontSize) : d.fontSize,
     rainbow: {
       enabled: typeof rb.enabled === "boolean" ? rb.enabled : d.rainbow.enabled,
       style: rb.style === "fill" || rb.style === "line" || rb.style === "both" ? rb.style : d.rainbow.style,

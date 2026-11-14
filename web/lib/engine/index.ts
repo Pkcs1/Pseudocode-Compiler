@@ -7,3 +7,4 @@ export * from "./interpreter";
 export * from "./inspect";
 export * from "./runner";
 export * from "./lint";
+export * from "./go-transpiler";

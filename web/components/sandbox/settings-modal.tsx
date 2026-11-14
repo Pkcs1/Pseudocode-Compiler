@@ -235,6 +235,16 @@ function EditorTab({ settings }: { settings: EditorSettings }) {
           label="IntelliSense"
         />
       </Row>
+      <Row
+        title="Tutup blok otomatis"
+        hint="Enter setelah if … then, for … do, while … do, repeat, atau program menambahkan endif/endfor/endwhile/until/endprogram."
+      >
+        <Switch
+          checked={settings.autoCloseBlocks}
+          onChange={(v) => updateEditorSettings((s) => ({ ...s, autoCloseBlocks: v }))}
+          label="Tutup blok otomatis"
+        />
+      </Row>
       <div className="py-3">
         <div className="text-xs font-semibold text-[#0f172a] dark:text-neutral-200 mb-2">Pintasan keyboard</div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[11px] text-[#475569] dark:text-neutral-400">
@@ -245,7 +255,9 @@ function EditorTab({ settings }: { settings: EditorSettings }) {
           <dt><Kbd>Backspace</Kbd></dt>
           <dd>Di awal baris, hapus satu tingkat indentasi sekaligus</dd>
           <dt><Kbd>Enter</Kbd></dt>
-          <dd>Baris baru mengikuti indentasi baris sebelumnya</dd>
+          <dd>Baris baru mengikuti indentasi; setelah <code>if … then</code>, <code>for … do</code>, dst. penutupnya ditambahkan otomatis</dd>
+          <dt><Kbd>Ctrl + = / -</Kbd></dt>
+          <dd>Perbesar / perkecil kode saja (juga Ctrl + scroll); <Kbd>Ctrl + 0</Kbd> kembali ke 100%</dd>
           <dt><Kbd>Ctrl + Space</Kbd></dt>
           <dd>Buka saran kode (IntelliSense)</dd>
           <dt><Kbd>↑ / ↓</Kbd></dt>
@@ -440,6 +452,8 @@ export function SettingsModal({
         tabSize: DEFAULT_EDITOR_SETTINGS.tabSize,
         insertSpaces: DEFAULT_EDITOR_SETTINGS.insertSpaces,
         intellisense: DEFAULT_EDITOR_SETTINGS.intellisense,
+        autoCloseBlocks: DEFAULT_EDITOR_SETTINGS.autoCloseBlocks,
+        fontSize: DEFAULT_EDITOR_SETTINGS.fontSize,
       }));
     else updateEditorSettings((s) => ({ ...s, rainbow: DEFAULT_EDITOR_SETTINGS.rainbow }));
   };

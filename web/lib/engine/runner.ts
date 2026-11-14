@@ -1,6 +1,12 @@
 import { SemanticChecker } from "./checker";
 import { PseudoError } from "./errors";
-import { AsyncInputReader, formatValue, Interpreter, UNINITIALIZED } from "./interpreter";
+import {
+  AsyncInputReader,
+  ExecutionTrace,
+  formatValue,
+  Interpreter,
+  UNINITIALIZED,
+} from "./interpreter";
 import { normalizeSmartQuotes, tokenize } from "./lexer";
 import { parse } from "./parser";
 
@@ -26,6 +32,9 @@ export interface ExecutionCallbacks {
   onError: (error: ExecutionErrorDetail, durationMs: number) => void;
   onExit: (code: number, durationMs: number, snapshot?: VariableSnapshot) => void;
   onVariablesSnapshot?: (snapshot: VariableSnapshot) => void;
+  /** When provided, execution is traced step by step (tabel trace). Called at
+   *  every input request and when the program ends (normally or with an error). */
+  onTrace?: (trace: ExecutionTrace) => void;
 }
 
 export interface ExecutionHandle {
@@ -65,8 +74,15 @@ export function executePseudocode(
     return snap;
   };
 
+  const emitTrace = () => {
+    if (callbacks.onTrace && interpreterInstance) {
+      callbacks.onTrace(interpreterInstance.getTrace());
+    }
+  };
+
   const reader = new AsyncInputReader(() => {
     if (!isStopped) {
+      emitTrace();
       callbacks.onVariablesSnapshot?.(getSnapshot());
       callbacks.onNeedInput();
     }
@@ -95,6 +111,7 @@ export function executePseudocode(
         },
         500_000
       );
+      if (callbacks.onTrace) interpreter.enableTrace();
       interpreterInstance = interpreter;
 
       await interpreter.run(program);
@@ -102,6 +119,7 @@ export function executePseudocode(
       if (!isStopped) {
         const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
         const snap = getSnapshot();
+        emitTrace();
         callbacks.onVariablesSnapshot?.(snap);
         callbacks.onExit(0, Math.round(endTime - startTime), snap);
       }
@@ -109,6 +127,7 @@ export function executePseudocode(
       if (isStopped) return;
       const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
       const durationMs = Math.round(endTime - startTime);
+      emitTrace();
 
       if (err instanceof PseudoError) {
         callbacks.onError(

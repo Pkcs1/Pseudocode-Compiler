@@ -734,6 +734,7 @@ export class Parser {
       },
     ];
     let elseBody: Stmt[] = [];
+    let elseLine: number | undefined;
 
     while (this.current().type === "ELSE") {
       const elseTok = this.advance();
@@ -758,6 +759,7 @@ export class Parser {
           col: elifTok.col,
         });
       } else {
+        elseLine = elseTok.line;
         elseBody = this._parseBlock(["ENDIF", "ENDPROGRAM", "EOF"]);
         break;
       }
@@ -773,6 +775,7 @@ export class Parser {
       _type: "IfStmt",
       branches,
       elseBody,
+      elseLine,
       line: ifTok.line,
       col: ifTok.col,
     };
