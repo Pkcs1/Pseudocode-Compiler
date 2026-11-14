@@ -24,6 +24,68 @@ import { runtimeError } from "./errors";
 
 export const UNINITIALIZED = Symbol("UNINITIALIZED");
 
+// ---------------------------------------------------------------------------
+// Execution trace (tabel trace): one row per executed step, with the value of
+// every variable after that step and the loop iteration it belongs to.
+// ---------------------------------------------------------------------------
+
+export type TraceKind =
+  | "assign"
+  | "input"
+  | "output"
+  | "if"
+  | "else"
+  | "loop" // start of a loop iteration
+  | "loop-check" // repeat-until condition check
+  | "loop-end"; // loop finished
+
+export interface TraceVarChange {
+  name: string;
+  /** Formatted value before the step (null = belum diisi). */
+  before: string | null;
+  after: string | null;
+}
+
+export interface TraceLoopFrame {
+  /** Unique per loop *execution* (a nested loop gets a new id every time it starts). */
+  id: number;
+  line: number;
+  kind: "for" | "while" | "repeat";
+  /** Short label, e.g. "for i", "while", "repeat". */
+  label: string;
+  iteration: number;
+}
+
+export interface TraceStep {
+  index: number;
+  line: number;
+  kind: TraceKind;
+  /** Human readable explanation (Indonesian). */
+  note?: string;
+  changes: TraceVarChange[];
+  /** Value of every variable (struct fields flattened as "a.b") after this step. */
+  state: Record<string, string | null>;
+  /** Active loops, outermost first. */
+  loops: TraceLoopFrame[];
+  /** True when this step starts a new iteration of the innermost loop. */
+  iterationStart?: boolean;
+  /** Result of the condition checked in this step (if / while / until). */
+  condition?: boolean;
+  /** Text printed by an output step (without the trailing newline). */
+  output?: string;
+  /** For `loop-end`, the id of the loop run that just finished. */
+  loopId?: number;
+}
+
+export interface ExecutionTrace {
+  steps: TraceStep[];
+  /** True when the program ran longer than the recording limit. */
+  truncated: boolean;
+  maxSteps: number;
+}
+
+export const DEFAULT_MAX_TRACE_STEPS = 3000;
+
 export function wrapInt64(val: bigint | number): bigint {
   const n = typeof val === "bigint" ? val : BigInt(Math.trunc(val));
   return BigInt.asIntN(64, n);
@@ -130,6 +192,16 @@ export class Interpreter {
   varTypes: Map<string, string>;
   env: Map<string, unknown>;
 
+  // Tracing (disabled unless `enableTrace` is called)
+  traceEnabled = false;
+  maxTraceSteps = DEFAULT_MAX_TRACE_STEPS;
+  trace: TraceStep[] = [];
+  traceTruncated = false;
+  private loopStack: TraceLoopFrame[] = [];
+  private loopIdCounter = 0;
+  private lastTraceState: Record<string, string | null> = {};
+  private constNames = new Set<string>();
+
   constructor(
     sourceLines: string[],
     reader: AsyncInputReader,
@@ -147,6 +219,94 @@ export class Interpreter {
     this.structs = new Map();
     this.varTypes = new Map();
     this.env = new Map();
+  }
+
+  enableTrace(maxTraceSteps: number = DEFAULT_MAX_TRACE_STEPS): void {
+    this.traceEnabled = true;
+    this.maxTraceSteps = maxTraceSteps;
+  }
+
+  getTrace(): ExecutionTrace {
+    return {
+      steps: this.trace.slice(),
+      truncated: this.traceTruncated,
+      maxSteps: this.maxTraceSteps,
+    };
+  }
+
+  _traceFormat(val: unknown, type: string): string | null {
+    if (val === UNINITIALIZED || val === undefined) return null;
+    if (type === "string") return JSON.stringify(String(val));
+    if (type === "char") return `'${String.fromCharCode(Number(val))}'`;
+    return formatValue(val, type);
+  }
+
+  _flattenInto(
+    out: Record<string, string | null>,
+    name: string,
+    val: unknown,
+    type: string
+  ): void {
+    const fields = this.structs.get(type);
+    if (fields && val && typeof val === "object") {
+      for (const [fname, ftype] of Object.entries(fields)) {
+        this._flattenInto(out, `${name}.${fname}`, (val as Record<string, unknown>)[fname], ftype);
+      }
+      return;
+    }
+    out[name] = this._traceFormat(val, type);
+  }
+
+  _traceState(): Record<string, string | null> {
+    const out: Record<string, string | null> = {};
+    for (const [name, val] of this.env.entries()) {
+      if (this.constNames.has(name)) continue;
+      this._flattenInto(out, name, val, this.varTypes.get(name) ?? "unknown");
+    }
+    return out;
+  }
+
+  _record(
+    line: number,
+    kind: TraceKind,
+    note?: string,
+    iterationStart?: boolean,
+    extra?: Pick<TraceStep, "condition" | "output" | "loopId">
+  ): void {
+    if (!this.traceEnabled || this.traceTruncated) return;
+    if (this.trace.length >= this.maxTraceSteps) {
+      this.traceTruncated = true;
+      return;
+    }
+    const state = this._traceState();
+    const changes: TraceVarChange[] = [];
+    for (const [name, after] of Object.entries(state)) {
+      const before = name in this.lastTraceState ? this.lastTraceState[name] : null;
+      if (before !== after) changes.push({ name, before, after });
+    }
+    this.lastTraceState = state;
+    this.trace.push({
+      index: this.trace.length,
+      line,
+      kind,
+      note,
+      changes,
+      state,
+      loops: this.loopStack.map((f) => ({ ...f })),
+      iterationStart,
+      ...extra,
+    });
+  }
+
+  _pushLoop(line: number, kind: TraceLoopFrame["kind"], label: string): TraceLoopFrame {
+    const frame: TraceLoopFrame = { id: ++this.loopIdCounter, line, kind, label, iteration: 0 };
+    this.loopStack.push(frame);
+    return frame;
+  }
+
+  _popLoop(frame: TraceLoopFrame): void {
+    const idx = this.loopStack.lastIndexOf(frame);
+    if (idx >= 0) this.loopStack.splice(idx);
   }
 
   stop(): void {
@@ -239,6 +399,7 @@ export class Interpreter {
         const coerced = this._coerceValue(val, rtype);
         this.varTypes.set(decl.name, rtype);
         this.env.set(decl.name, coerced);
+        this.constNames.add(decl.name);
       }
     }
 
@@ -297,8 +458,16 @@ export class Interpreter {
 
   async execStmt(stmt: Stmt): Promise<void> {
     this._tickStep(stmt);
-    if (stmt._type === "AssignStmt") return this.execAssign(stmt);
-    if (stmt._type === "InputStmt") return this.execInput(stmt);
+    if (stmt._type === "AssignStmt") {
+      this.execAssign(stmt);
+      this._record(stmt.line, "assign");
+      return;
+    }
+    if (stmt._type === "InputStmt") {
+      await this.execInput(stmt);
+      this._record(stmt.line, "input");
+      return;
+    }
     if (stmt._type === "OutputStmt") return this.execOutput(stmt);
     if (stmt._type === "ForStmt") return this.execFor(stmt);
     if (stmt._type === "IfStmt") return this.execIf(stmt);
@@ -418,7 +587,10 @@ export class Interpreter {
       evaluated.push([val, valType]);
     }
 
-    this.stdout(formatOutput(evaluated));
+    const text = formatOutput(evaluated);
+    this.stdout(text);
+    const printed = text.replace(/\n$/, "");
+    this._record(stmt.line, "output", undefined, undefined, { output: printed });
   }
 
   async execFor(stmt: ForStmt): Promise<void> {
@@ -455,54 +627,142 @@ export class Interpreter {
       step = -step;
     }
 
-    this.env.set(stmt.varName, curr);
-    if (step > 0n) {
-      while (curr <= limit) {
+    const frame = this._pushLoop(stmt.line, "for", `for ${stmt.varName}`);
+    const varType = this.varTypes.get(stmt.varName) ?? "integer";
+    const show = (v: bigint) => formatValue(v, varType);
+    try {
+      this.env.set(stmt.varName, curr);
+      const inRange = () => (step > 0n ? curr <= limit : curr >= limit);
+      while (inRange()) {
         if (this.isStopped) return;
         this._tickStep(stmt);
         this.env.set(stmt.varName, wrapInt64(curr));
+        frame.iteration++;
+        this._record(
+          stmt.line,
+          "loop",
+          `${stmt.varName} = ${show(curr)}. Karena ${show(curr)} ${step > 0n ? "≤" : "≥"} ${show(limit)}, isi loop dijalankan.`,
+          true
+        );
         await this._execBlock(stmt.body);
         curr += step;
       }
-    } else {
-      while (curr >= limit) {
-        if (this.isStopped) return;
-        this._tickStep(stmt);
-        this.env.set(stmt.varName, wrapInt64(curr));
-        await this._execBlock(stmt.body);
-        curr += step;
-      }
+    } finally {
+      this._popLoop(frame);
     }
+    if (this.isStopped) return;
+    this._record(
+      stmt.line,
+      "loop-end",
+      frame.iteration === 0
+        ? `${show(curr)} ${step > 0n ? ">" : "<"} ${show(limit)}, jadi isi loop tidak dijalankan sama sekali.`
+        : `Nilai ${stmt.varName} berikutnya adalah ${show(curr)}, dan ${show(curr)} ${step > 0n ? ">" : "<"} ${show(limit)}, jadi loop berhenti setelah ${frame.iteration} putaran.`,
+      undefined,
+      { loopId: frame.id }
+    );
   }
 
   async execIf(stmt: IfStmt): Promise<void> {
     for (const branch of stmt.branches) {
       const [condVal] = this.evalExpr(branch.condition);
-      if (Boolean(condVal)) {
+      const ok = Boolean(condVal);
+      this._record(
+        branch.line,
+        "if",
+        ok
+          ? "Kondisi BENAR, jadi isi blok ini dijalankan."
+          : "Kondisi SALAH, jadi isi blok ini dilewati.",
+        undefined,
+        { condition: ok }
+      );
+      if (ok) {
         await this._execBlock(branch.body);
         return;
       }
+    }
+    if (stmt.elseBody.length > 0) {
+      this._record(
+        stmt.elseLine ?? stmt.elseBody[0].line,
+        "else",
+        "Semua kondisi di atas SALAH, jadi isi blok else dijalankan."
+      );
     }
     await this._execBlock(stmt.elseBody);
   }
 
   async execWhile(stmt: WhileStmt): Promise<void> {
-    while (true) {
-      if (this.isStopped) return;
-      const [condVal] = this.evalExpr(stmt.condition);
-      if (!Boolean(condVal)) break;
-      this._tickStep(stmt);
-      await this._execBlock(stmt.body);
+    const frame = this._pushLoop(stmt.line, "while", "while");
+    try {
+      while (true) {
+        if (this.isStopped) return;
+        const [condVal] = this.evalExpr(stmt.condition);
+        if (!Boolean(condVal)) break;
+        this._tickStep(stmt);
+        frame.iteration++;
+        this._record(
+          stmt.line,
+          "loop",
+          "Kondisi masih BENAR, jadi isi loop dijalankan.",
+          true,
+          { condition: true }
+        );
+        await this._execBlock(stmt.body);
+      }
+    } finally {
+      this._popLoop(frame);
     }
+    this._record(
+      stmt.line,
+      "loop-end",
+      frame.iteration === 0
+        ? "Kondisi sudah SALAH dari awal, jadi isi loop tidak dijalankan sama sekali."
+        : `Kondisi sekarang SALAH, jadi loop berhenti setelah ${frame.iteration} putaran.`,
+      undefined,
+      { condition: false, loopId: frame.id }
+    );
   }
 
   async execRepeat(stmt: RepeatStmt): Promise<void> {
-    while (true) {
-      if (this.isStopped) return;
-      this._tickStep(stmt);
-      await this._execBlock(stmt.body);
-      const [condVal] = this.evalExpr(stmt.condition);
-      if (Boolean(condVal)) break;
+    const frame = this._pushLoop(stmt.line, "repeat", "repeat");
+    let done = false;
+    try {
+      while (true) {
+        if (this.isStopped) return;
+        this._tickStep(stmt);
+        frame.iteration++;
+        this._record(
+          stmt.line,
+          "loop",
+          frame.iteration === 1
+            ? "Isi repeat langsung dijalankan (repeat selalu jalan minimal sekali)."
+            : "Isi repeat dijalankan lagi.",
+          true
+        );
+        await this._execBlock(stmt.body);
+        const [condVal] = this.evalExpr(stmt.condition);
+        if (Boolean(condVal)) {
+          done = true;
+          break;
+        }
+        this._record(
+          stmt.untilLine,
+          "loop-check",
+          "Kondisi until masih SALAH, jadi loop diulang lagi.",
+          undefined,
+          { condition: false }
+        );
+      }
+    } finally {
+      this._popLoop(frame);
+    }
+    if (done) {
+      this._record(
+        stmt.untilLine,
+        "loop-end",
+        `Kondisi until sudah BENAR, jadi loop berhenti setelah ${frame.iteration} putaran.`,
+        undefined,
+        { condition: true, loopId: frame.id }
+      );
     }
   }
 

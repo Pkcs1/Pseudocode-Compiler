@@ -149,6 +149,8 @@ export interface IfStmt extends NodeBase {
   _type?: "IfStmt";
   branches: IfBranch[];
   elseBody: Stmt[];
+  /** Line of the `else` keyword (when there is an else block). */
+  elseLine?: number;
 }
 
 export interface WhileStmt extends NodeBase {

@@ -26,6 +26,7 @@ import {
   executePseudocode,
   ExecutionHandle,
   VariableSnapshot,
+  ExecutionTrace,
   Diagnostic,
 } from "@/lib/engine";
 
@@ -115,6 +116,7 @@ export function Workspace() {
   const [isWaitingInput, setIsWaitingInput] = useState<boolean>(false);
   const [inspectData, setInspectData] = useState<InspectResult | null>(null);
   const [variableSnapshot, setVariableSnapshot] = useState<VariableSnapshot | null>(null);
+  const [trace, setTrace] = useState<ExecutionTrace | null>(null);
   const [lastExecutionMs, setLastExecutionMs] = useState<number | null>(null);
   // Error raised while the program was running (shown inline until the code changes).
   // Tagged with the code it came from, so it disappears as soon as the code is edited.
@@ -255,6 +257,7 @@ export function Workspace() {
     setRuntimeError(null);
     setIsRunning(true);
     setIsWaitingInput(false);
+    setTrace(null);
 
     // Add command banner
     setEntries((prev) => [
@@ -286,6 +289,9 @@ export function Workspace() {
         },
         onVariablesSnapshot: (snap) => {
           setVariableSnapshot(snap);
+        },
+        onTrace: (t) => {
+          setTrace(t);
         },
         onError: (err, durationMs) => {
           setIsWaitingInput(false);
@@ -550,6 +556,7 @@ export function Workspace() {
               onClear={() => setEntries([])}
               inspectData={inspectData}
               variableSnapshot={variableSnapshot}
+              trace={trace}
               lastExecutionMs={lastExecutionMs}
               onKeyDownSound={soundDown}
               onKeyUpSound={soundUp}

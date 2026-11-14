@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import {
   Terminal as TerminalIcon,
   TableProperties,
+  Footprints,
   Trash2,
   AlertCircle,
   CheckCircle2,
@@ -16,10 +17,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InspectResult } from "@/lib/runner";
-import { VariableSnapshot, Diagnostic } from "@/lib/engine";
+import { VariableSnapshot, Diagnostic, ExecutionTrace } from "@/lib/engine";
 import { GoView } from "./go-view";
+import { TraceView } from "./trace-view";
 
-type ResultsTab = "problems" | "console" | "kamus" | "go";
+type ResultsTab = "problems" | "console" | "kamus" | "trace" | "go";
 
 export interface TerminalEntry {
   id: string;
@@ -44,6 +46,8 @@ interface ResultsPaneProps {
   onClear: () => void;
   inspectData: InspectResult | null;
   variableSnapshot?: VariableSnapshot | null;
+  /** Step-by-step execution trace of the last run ("Trace" tab). */
+  trace?: ExecutionTrace | null;
   lastExecutionMs?: number | null;
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
@@ -63,6 +67,19 @@ const TAB_CLASS = (active: boolean) =>
       : "text-[#64748b] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:text-neutral-200"
   );
 
+function codeHasLoop(code: string, inspectData: InspectResult | null): boolean {
+  if (inspectData?.tokens?.length) {
+    return inspectData.tokens.some(
+      (t) => t.type === "FOR" || t.type === "WHILE" || t.type === "REPEAT"
+    );
+  }
+  const stripped = code
+    .replace(/\/\/.*$/gm, "")
+    .replace(/\{[^}]*\}/g, "")
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, "");
+  return /\b(?:for|while|repeat)\b/.test(stripped);
+}
+
 export function ResultsPane({
   entries,
   isRunning,
@@ -71,6 +88,7 @@ export function ResultsPane({
   onClear,
   inspectData,
   variableSnapshot,
+  trace,
   lastExecutionMs,
   onKeyDownSound,
   onKeyUpSound,
@@ -79,6 +97,10 @@ export function ResultsPane({
   code,
 }: ResultsPaneProps) {
   const [activeTab, setActiveTab] = useState<ResultsTab>("console");
+  const hasLoop = codeHasLoop(code, inspectData);
+  const currentTab: ResultsTab =
+    activeTab === "trace" && !hasLoop ? "console" : activeTab;
+
   const errorCount = diagnostics.filter((d) => d.severity === "error").length;
   const warningCount = diagnostics.length - errorCount;
   const [inlineInput, setInlineInput] = useState("");
@@ -120,6 +142,7 @@ export function ResultsPane({
   const declaredVariables = inspectData?.kamus?.variables || {};
   const variableEntries = Object.entries(declaredVariables);
   const totalVars = variableEntries.length;
+  const traceSteps = trace?.steps.length ?? 0;
 
   // Find max numeric value for sparkline bar scaling
   let maxNumericValue = 1;
@@ -143,12 +166,14 @@ export function ResultsPane({
             </span>
             <span className="text-[#cbd5e1] dark:text-neutral-600 text-xs">•</span>
             <span className="text-[11px] text-[#64748b] dark:text-neutral-400">
-              {activeTab === "console"
+              {currentTab === "console"
                 ? `${entries.length} baris log`
-                : activeTab === "problems"
+                : currentTab === "problems"
                 ? `${diagnostics.length} masalah`
-                : activeTab === "go"
+                : currentTab === "go"
                 ? "konversi ke Go"
+                : currentTab === "trace"
+                ? `${traceSteps} langkah`
                 : `${totalVars} variabel`}
             </span>
             {lastExecutionMs !== null && lastExecutionMs !== undefined && (
@@ -166,7 +191,7 @@ export function ResultsPane({
             <button
               type="button"
               onClick={() => setActiveTab("problems")}
-              className={TAB_CLASS(activeTab === "problems")}
+              className={TAB_CLASS(currentTab === "problems")}
             >
               <ListChecks className="w-3 h-3 text-[#64748b] dark:text-neutral-400" />
               <span>Masalah</span>
@@ -187,7 +212,7 @@ export function ResultsPane({
             <button
               type="button"
               onClick={() => setActiveTab("console")}
-              className={TAB_CLASS(activeTab === "console")}
+              className={TAB_CLASS(currentTab === "console")}
             >
               <TerminalIcon className="w-3 h-3 text-[#16a34a] dark:text-emerald-400" />
               <span>Terminal</span>
@@ -196,17 +221,29 @@ export function ResultsPane({
             <button
               type="button"
               onClick={() => setActiveTab("kamus")}
-              className={TAB_CLASS(activeTab === "kamus")}
+              className={TAB_CLASS(currentTab === "kamus")}
             >
               <TableProperties className="w-3 h-3 text-[#5b45ff] dark:text-purple-400" />
               <span title="Tabel Kamus">Kamus</span>
             </button>
 
+            {hasLoop && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("trace")}
+                title="Trace eksekusi baris demi baris & per putaran loop"
+                className={TAB_CLASS(currentTab === "trace")}
+              >
+                <Footprints className="w-3 h-3 text-[#d97706] dark:text-amber-400" />
+                <span>Trace</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setActiveTab("go")}
               title="Lihat program ini dalam bahasa Go"
-              className={TAB_CLASS(activeTab === "go")}
+              className={TAB_CLASS(currentTab === "go")}
             >
               <FileCode2 className="w-3 h-3 text-[#0891b2] dark:text-cyan-400" />
               <span>Go</span>
@@ -236,7 +273,7 @@ export function ResultsPane({
             </div>
           )}
 
-          {activeTab === "console" && (
+          {currentTab === "console" && (
             <button
               type="button"
               onClick={onClear}
@@ -252,7 +289,7 @@ export function ResultsPane({
       {/* Pane Content */}
       <div className="relative flex-1 min-h-0 overflow-hidden text-xs bg-[#ffffff] dark:bg-transparent">
         {/* VIEW 0: PROBLEMS (VS Code style) — click a row to jump to it */}
-        {activeTab === "problems" && (
+        {currentTab === "problems" && (
           <div className="h-full min-h-0 overflow-y-auto py-1.5">
             {diagnostics.length === 0 ? (
               <div className="px-4 py-3 text-[#64748b] dark:text-neutral-500 text-xs">
@@ -299,7 +336,7 @@ export function ResultsPane({
         )}
 
         {/* VIEW 1: TERMINAL CONSOLE */}
-        {activeTab === "console" && (
+        {currentTab === "console" && (
           <div
             ref={scrollContainerRef}
             onClick={() => {
@@ -438,10 +475,10 @@ export function ResultsPane({
         )}
 
         {/* VIEW 3: Go conversion */}
-        {activeTab === "go" && <GoView code={code} />}
+        {currentTab === "go" && <GoView code={code} />}
 
         {/* VIEW 2: KAMUS & SIMBOL (Structured Table with Sparkbars like Image 2 RESULTS) */}
-        {activeTab === "kamus" && (
+        {currentTab === "kamus" && (
           <div className="h-full min-h-0 overflow-y-auto p-3 flex flex-col justify-between">
             {totalVars === 0 ? (
               <div className="text-[#64748b] dark:text-neutral-500 text-center py-8">
@@ -561,6 +598,17 @@ export function ResultsPane({
               </div>
             </div>
           </div>
+        )}
+
+        {/* VIEW 4: TRACE (shown only when the program contains a loop) */}
+        {currentTab === "trace" && (
+          <TraceView
+            trace={trace ?? null}
+            declared={inspectData?.kamus?.variables ?? {}}
+            code={code}
+            isRunning={isRunning}
+            onJumpTo={onJumpTo}
+          />
         )}
       </div>
     </div>
