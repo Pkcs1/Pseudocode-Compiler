@@ -175,3 +175,78 @@ export function electricDedent(value: string, pos: number): DedentEdit | null {
   if (target === null || target === current) return null;
   return { start: lineStart, end: lineStart + current.length, indent: target };
 }
+
+/**
+ * VS Code-style bracket and quote pairs: typing `(`, `[`, `"` or `'` also inserts
+ * the closer, typing a closer that's already next to the caret steps over it, and
+ * Backspace between an empty pair deletes both.
+ */
+const PAIRS: Record<string, string> = { "(": ")", "[": "]", '"': '"', "'": "'" };
+const CLOSERS = new Set(Object.values(PAIRS));
+
+export interface PairEdit {
+  /** Range `[start, end)` to replace with `text`… */
+  start: number;
+  end: number;
+  text: string;
+  /** …then select `[selStart, selEnd]`. */
+  selStart: number;
+  selEnd: number;
+}
+
+/** Whether `line` (text before the caret) ends inside a string literal or a comment. */
+function inStringOrComment(line: string): boolean {
+  let quote: string | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if ((c === "/" && line[i + 1] === "/") || c === "{") {
+      return true;
+    }
+  }
+  return quote !== null;
+}
+
+/** The edit for typing `key` with selection `[start, end)`, or null for the default behaviour. */
+export function pairTypeEdit(value: string, start: number, end: number, key: string): PairEdit | null {
+  const isOpener = key in PAIRS;
+  if (!isOpener && !CLOSERS.has(key)) return null;
+  const isQuote = key === '"' || key === "'";
+  const next = value[end] ?? "";
+
+  // Wrap a selection: (selected) / "selected"
+  if (isOpener && start !== end) {
+    const inner = value.slice(start, end);
+    if (inner.includes("\n") && isQuote) return null;
+    return { start, end, text: key + inner + PAIRS[key], selStart: start + 1, selEnd: end + 1 };
+  }
+  if (start !== end) return null;
+
+  // Step over a closer that's already there.
+  if (CLOSERS.has(key) && next === key) {
+    // For quotes, only when it's the end of a literal we're inside.
+    const lineBefore = value.slice(value.lastIndexOf("\n", start - 1) + 1, start);
+    if (!isQuote || inStringOrComment(lineBefore)) {
+      return { start, end, text: "", selStart: start + 1, selEnd: start + 1 };
+    }
+  }
+  if (!isOpener) return null;
+
+  const lineBefore = value.slice(value.lastIndexOf("\n", start - 1) + 1, start);
+  if (inStringOrComment(lineBefore)) return null;
+  // Only pair before whitespace, end of line, or a closing bracket / separator.
+  if (next !== "" && !/[\s)\],;]/.test(next)) return null;
+  // Don't pair a quote right after a word character (e.g. typing an apostrophe).
+  if (isQuote && /\w/.test(value[start - 1] ?? "")) return null;
+
+  return { start, end, text: key + PAIRS[key], selStart: start + 1, selEnd: start + 1 };
+}
+
+/** Backspace between an empty pair, `(|)` or `"|"`: the range covering both characters. */
+export function pairBackspaceRange(value: string, pos: number): [number, number] | null {
+  const open = value[pos - 1];
+  return open !== undefined && open in PAIRS && value[pos] === PAIRS[open] ? [pos - 1, pos + 1] : null;
+}

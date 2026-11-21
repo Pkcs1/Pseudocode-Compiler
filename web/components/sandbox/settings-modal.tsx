@@ -245,6 +245,16 @@ function EditorTab({ settings }: { settings: EditorSettings }) {
           label="Tutup blok otomatis"
         />
       </Row>
+      <Row
+        title="Tutup kurung otomatis"
+        hint="Mengetik ( [ &quot; ' langsung menambahkan pasangan penutupnya."
+      >
+        <Switch
+          checked={settings.autoCloseBrackets}
+          onChange={(v) => updateEditorSettings((s) => ({ ...s, autoCloseBrackets: v }))}
+          label="Tutup kurung otomatis"
+        />
+      </Row>
       <div className="py-3">
         <div className="text-xs font-semibold text-[#0f172a] dark:text-neutral-200 mb-2">Pintasan keyboard</div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[11px] text-[#475569] dark:text-neutral-400">
@@ -453,6 +463,7 @@ export function SettingsModal({
         insertSpaces: DEFAULT_EDITOR_SETTINGS.insertSpaces,
         intellisense: DEFAULT_EDITOR_SETTINGS.intellisense,
         autoCloseBlocks: DEFAULT_EDITOR_SETTINGS.autoCloseBlocks,
+        autoCloseBrackets: DEFAULT_EDITOR_SETTINGS.autoCloseBrackets,
         fontSize: DEFAULT_EDITOR_SETTINGS.fontSize,
       }));
     else updateEditorSettings((s) => ({ ...s, rainbow: DEFAULT_EDITOR_SETTINGS.rainbow }));
