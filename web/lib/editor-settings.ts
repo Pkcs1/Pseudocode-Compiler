@@ -14,6 +14,8 @@ export interface EditorSettings {
   intellisense: boolean;
   /** Enter after a block opener (`if … then`, `for … do`, …) inserts the closing keyword. */
   autoCloseBlocks: boolean;
+  /** Typing `(`, `[`, `"` or `'` also inserts its closing pair. */
+  autoCloseBrackets: boolean;
   /** Code font size in px (editor zoom). Only the code area scales, not the rest of the page. */
   fontSize: number;
   rainbow: {
@@ -42,6 +44,7 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   insertSpaces: true,
   intellisense: true,
   autoCloseBlocks: true,
+  autoCloseBrackets: true,
   fontSize: 14,
   rainbow: {
     enabled: true,
@@ -77,6 +80,7 @@ function normalize(raw: unknown): EditorSettings {
     insertSpaces: typeof r.insertSpaces === "boolean" ? r.insertSpaces : d.insertSpaces,
     intellisense: typeof r.intellisense === "boolean" ? r.intellisense : d.intellisense,
     autoCloseBlocks: typeof r.autoCloseBlocks === "boolean" ? r.autoCloseBlocks : d.autoCloseBlocks,
+    autoCloseBrackets: typeof r.autoCloseBrackets === "boolean" ? r.autoCloseBrackets : d.autoCloseBrackets,
     fontSize: typeof r.fontSize === "number" && Number.isFinite(r.fontSize) ? clampFontSize(r.fontSize) : d.fontSize,
     rainbow: {
       enabled: typeof rb.enabled === "boolean" ? rb.enabled : d.rainbow.enabled,

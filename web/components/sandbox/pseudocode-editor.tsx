@@ -22,7 +22,7 @@ import {
   FONT_SIZE_MIN,
   FONT_SIZE_MAX,
 } from "@/lib/editor-settings";
-import { blockEnterEdit, electricDedent } from "@/lib/auto-close";
+import { blockEnterEdit, electricDedent, pairBackspaceRange, pairTypeEdit } from "@/lib/auto-close";
 import { IndentGuides, indentGuideWidth } from "./indent-guides";
 import { tokenizeLine, TOKEN_STYLE } from "@/lib/syntax-highlighter";
 import type { Diagnostic } from "@/lib/engine";
@@ -156,7 +156,7 @@ export function PseudocodeEditor({
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: false });
   const [focused, setFocused] = useState(false);
   const settings = useEditorSettings();
-  const { tabSize, insertSpaces, intellisense, autoCloseBlocks, fontSize } = settings;
+  const { tabSize, insertSpaces, intellisense, autoCloseBlocks, autoCloseBrackets, fontSize } = settings;
   const lineHeight = lineHeightFor(fontSize);
   const editorBodyRef = useRef<HTMLDivElement | null>(null);
   // Width of one code character in px (the suggestion popup uses its own, smaller font).
@@ -509,7 +509,26 @@ export function PseudocodeEditor({
       return;
     }
 
+    if (autoCloseBrackets && e.key.length === 1) {
+      const pair = pairTypeEdit(value, start, end, e.key);
+      if (pair) {
+        e.preventDefault();
+        if (pair.text) replaceRange(textarea, pair.start, pair.end, pair.text, pair.selStart, pair.selEnd);
+        else textarea.setSelectionRange(pair.selStart, pair.selEnd);
+        updateCursorPosition();
+        return;
+      }
+    }
+
     if (e.key === "Backspace" && !e.shiftKey && start === end && start > 0) {
+      // Between an empty pair `(|)`: delete both.
+      const pairRange = autoCloseBrackets ? pairBackspaceRange(value, start) : null;
+      if (pairRange) {
+        e.preventDefault();
+        replaceRange(textarea, pairRange[0], pairRange[1], "", pairRange[0]);
+        updateCursorPosition();
+        return;
+      }
       // Inside leading whitespace made of spaces: delete back to the previous tab stop.
       const lineStart = lineStartOf(value, start);
       const before = value.slice(lineStart, start);
