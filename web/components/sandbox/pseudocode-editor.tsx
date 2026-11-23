@@ -4,14 +4,20 @@ import React, { useRef, useState, useMemo, useEffect, useCallback } from "react"
 import {
   Copy,
   Check,
+  Download,
+  Maximize2,
+  Minimize2,
+  Minus,
   Play,
   Square,
   CircleX,
   TriangleAlert,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { downloadTextFile, getDownloadFilename } from "@/lib/download";
 import {
   useEditorSettings,
   updateEditorSettings,
@@ -134,6 +140,9 @@ interface PseudocodeEditorProps {
   onKeyDownSound?: (key: string) => void;
   onKeyUpSound?: (key: string) => void;
   lastExecutionMs?: number | null;
+  windowMode?: "normal" | "minimized" | "maximized";
+  onToggleMinimize?: () => void;
+  onToggleMaximize?: () => void;
 }
 
 export function PseudocodeEditor({
@@ -148,11 +157,18 @@ export function PseudocodeEditor({
   onKeyDownSound,
   onKeyUpSound,
   lastExecutionMs,
+  windowMode = "normal",
+  onToggleMinimize,
+  onToggleMaximize,
 }: PseudocodeEditorProps) {
+  const isMinimized = windowMode === "minimized";
+  const isMaximized = windowMode === "maximized";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lineNumbersRef = useRef<HTMLDivElement | null>(null);
   const backdropRef = useRef<HTMLPreElement | null>(null);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const downloadFilename = useMemo(() => getDownloadFilename(code), [code]);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: false });
   const [focused, setFocused] = useState(false);
   const settings = useEditorSettings();
@@ -573,16 +589,87 @@ export function PseudocodeEditor({
     setTimeout(() => setCopied(false), 1800);
   };
 
+  const downloadCode = () => {
+    if (!downloadFilename) return;
+    onKeyDownSound?.("Enter");
+    downloadTextFile(code, downloadFilename);
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 1800);
+  };
+
+  const clearCode = () => {
+    if (!code) return;
+    onKeyDownSound?.("Backspace");
+    updateSuggest(null);
+    const textarea = textareaRef.current;
+    if (textarea) {
+      replaceRange(textarea, 0, textarea.value.length, "", 0);
+    } else {
+      onChange("");
+    }
+    setCursorPos({ line: 1, col: 1, sel: false });
+  };
+
   return (
-    <div className="flex flex-col h-full min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors">
+    <div
+      className={cn(
+        "flex flex-col min-h-0 rounded-xl border border-[#e4e4df] bg-[#ffffff] shadow-sm dark:border-neutral-800 dark:bg-[#0d0f12] dark:shadow-2xl overflow-hidden transition-colors",
+        isMinimized ? "h-auto" : "h-full"
+      )}
+    >
       {/* Top Window Header (Option 2 Window Header Style with Light Palette & Dark Toggle) */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#e5e5df] bg-[#fbfbfa] dark:border-neutral-800/90 dark:bg-[#12151b] select-none gap-2">
+      <div
+        className={cn(
+          "flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-[#fbfbfa] dark:bg-[#12151b] select-none gap-2",
+          !isMinimized && "border-b border-[#e5e5df] dark:border-neutral-800/90"
+        )}
+      >
         <div className="flex items-center gap-3">
           {/* macOS Traffic Lights */}
-          <div className="hidden sm:flex items-center gap-1.5 mr-1">
-            <span className="w-3 h-3 rounded-full bg-[#ff5f56] inline-block" />
-            <span className="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block" />
-            <span className="w-3 h-3 rounded-full bg-[#27c93f] inline-block" />
+          <div className="group/lights hidden sm:flex items-center gap-1.5 mr-1">
+            <button
+              type="button"
+              onClick={clearCode}
+              title="Hapus semua kode"
+              aria-label="Hapus semua kode"
+              className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#e0443e] transition-colors cursor-pointer"
+            >
+              <X
+                className="w-2 h-2 text-[#4d0000] opacity-0 group-hover/lights:opacity-100 transition-opacity"
+                strokeWidth={3}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleMinimize}
+              title={isMinimized ? "Kembalikan editor" : "Perkecil editor"}
+              aria-label={isMinimized ? "Kembalikan editor" : "Perkecil editor"}
+              className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#dea123] transition-colors cursor-pointer"
+            >
+              <Minus
+                className="w-2 h-2 text-[#5c3d00] opacity-0 group-hover/lights:opacity-100 transition-opacity"
+                strokeWidth={3}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleMaximize}
+              title={isMaximized ? "Keluar mode fokus" : "Perbesar editor (mode fokus)"}
+              aria-label={isMaximized ? "Keluar mode fokus" : "Perbesar editor (mode fokus)"}
+              className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#1aab29] transition-colors cursor-pointer"
+            >
+              {isMaximized ? (
+                <Minimize2
+                  className="w-2 h-2 text-[#004d00] opacity-0 group-hover/lights:opacity-100 transition-opacity"
+                  strokeWidth={3}
+                />
+              ) : (
+                <Maximize2
+                  className="w-2 h-2 text-[#004d00] opacity-0 group-hover/lights:opacity-100 transition-opacity"
+                  strokeWidth={3}
+                />
+              )}
+            </button>
           </div>
 
           {/* Badges */}
@@ -635,7 +722,7 @@ export function PseudocodeEditor({
               disabled={fontSize <= FONT_SIZE_MIN}
               title="Perkecil kode (Ctrl + -)"
               aria-label="Perkecil kode"
-              className="px-1.5 py-1 rounded-l-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+              className="px-1.5 py-1 rounded-l-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-emerald-600 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
@@ -643,7 +730,7 @@ export function PseudocodeEditor({
               type="button"
               onClick={() => zoom(null)}
               title="Kembalikan ukuran kode (Ctrl + 0)"
-              className="min-w-[3.25rem] px-1 py-1 text-center tabular-nums hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white cursor-pointer"
+              className="min-w-[3.25rem] px-1 py-1 text-center tabular-nums hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
             >
               {Math.round((fontSize / DEFAULT_EDITOR_SETTINGS.fontSize) * 100)}%
             </button>
@@ -653,7 +740,7 @@ export function PseudocodeEditor({
               disabled={fontSize >= FONT_SIZE_MAX}
               title="Perbesar kode (Ctrl + =)"
               aria-label="Perbesar kode"
-              className="px-1.5 py-1 rounded-r-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+              className="px-1.5 py-1 rounded-r-lg hover:bg-[#e4e4df] hover:text-[#0f172a] dark:hover:bg-emerald-600 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -664,12 +751,12 @@ export function PseudocodeEditor({
             type="button"
             onClick={copyCode}
             title="Salin isi program"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
+            className="group inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white transition-all cursor-pointer"
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-[#16a34a] dark:text-emerald-400" />
-                <span className="text-[#16a34a] dark:text-emerald-400">Disalin</span>
+                <Check className="w-3 h-3 text-[#16a34a] dark:text-emerald-400 dark:group-hover:text-white" />
+                <span className="text-[#16a34a] dark:text-emerald-400 dark:group-hover:text-white">Disalin</span>
               </>
             ) : (
               <>
@@ -678,15 +765,42 @@ export function PseudocodeEditor({
               </>
             )}
           </button>
+
+          {/* Download (.txt) Button */}
+          <button
+            type="button"
+            onClick={downloadCode}
+            disabled={!downloadFilename}
+            title={
+              downloadFilename
+                ? `Unduh sebagai ${downloadFilename}`
+                : "Tulis 'program <nama>' terlebih dahulu untuk mengunduh"
+            }
+            className="group inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+          >
+            {downloaded ? (
+              <>
+                <Check className="w-3 h-3 text-[#16a34a] dark:text-emerald-400 dark:group-hover:text-white" />
+                <span className="text-[#16a34a] dark:text-emerald-400 dark:group-hover:text-white">Diunduh</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3 h-3" />
+                <span>Unduh</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Code Editor Body */}
-      <div
-        ref={editorBodyRef}
-        className="relative flex-1 min-h-0 flex overflow-hidden font-mono bg-[#ffffff] dark:bg-[#0d0f12]"
-        style={{ fontSize, "--lh": `${lineHeight}px` } as React.CSSProperties}
-      >
+      {!isMinimized && (
+        <>
+          {/* Code Editor Body */}
+          <div
+            ref={editorBodyRef}
+            className="relative flex-1 min-h-0 flex overflow-hidden font-mono bg-[#ffffff] dark:bg-[#0d0f12]"
+            style={{ fontSize, "--lh": `${lineHeight}px` } as React.CSSProperties}
+          >
         {/* Line Numbers Gutter */}
         <div
           ref={lineNumbersRef}
@@ -945,6 +1059,8 @@ export function PseudocodeEditor({
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

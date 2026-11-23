@@ -278,7 +278,7 @@ export function ResultsPane({
               type="button"
               onClick={onClear}
               title="Bersihkan log konsol"
-              className="p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+              className="p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
             </button>

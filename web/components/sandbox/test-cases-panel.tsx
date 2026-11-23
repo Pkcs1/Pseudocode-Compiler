@@ -126,7 +126,7 @@ export function TestCasesPanel({
           <button
             type="button"
             onClick={onAddCase}
-            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg border border-[#e2e2dc] bg-[#f1f1ee] hover:bg-[#e4e4df] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white transition-colors cursor-pointer"
           >
             <Plus className="w-3 h-3" />
             <span>Kasus</span>
@@ -276,7 +276,7 @@ export function TestCasesPanel({
                             onClick={() => onRunCase(tc.id)}
                             disabled={isAnyRunning}
                             title="Jalankan kasus ini"
-                            className="p-1 rounded-md text-[#16a34a] hover:bg-emerald-500/15 disabled:opacity-40 disabled:cursor-not-allowed dark:text-emerald-400 transition-colors cursor-pointer"
+                            className="p-1 rounded-md text-[#16a34a] hover:bg-emerald-500/15 disabled:opacity-40 disabled:cursor-not-allowed dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
                           >
                             <Play className="w-3 h-3 fill-current" />
                           </button>

@@ -11,7 +11,7 @@ import { useSyncExternalStore } from "react";
  */
 
 const STORAGE_KEY = "pseudo-sound-volume";
-export const DEFAULT_SOUND_VOLUME = 0.7;
+export const DEFAULT_SOUND_VOLUME = 0;
 
 let cache: number | null = null;
 const listeners = new Set<() => void>();

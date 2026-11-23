@@ -72,7 +72,7 @@ export function SoundVolumeControl({
           type="button"
           onClick={toggleMute}
           title={volume === 0 ? "Bunyikan suara (Muted)" : `Suara ${percent}% (Klik untuk mute)`}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:hover:bg-neutral-700 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
+          className="inline-flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:hover:bg-emerald-600 dark:text-neutral-300 dark:hover:text-white transition-all cursor-pointer"
         >
           {volume === 0 ? (
             <VolumeX className="w-4 h-4 text-neutral-400" />
@@ -92,7 +92,7 @@ export function SoundVolumeControl({
             "inline-flex items-center gap-1 px-1.5 py-1 text-[11px] font-mono font-medium rounded-lg transition-all cursor-pointer",
             isOpen
               ? "bg-[#ede9fe] text-[#4f46e5] dark:bg-neutral-700 dark:text-emerald-400"
-              : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:bg-neutral-700/60"
+              : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
           )}
         >
           <span>{percent}%</span>
@@ -128,7 +128,7 @@ export function SoundVolumeControl({
                   "px-2 py-1 text-[10px] font-mono rounded-md transition-colors cursor-pointer",
                   percent === 0
                     ? "bg-[#ede9fe] text-[#4f46e5] font-bold dark:bg-neutral-700 dark:text-white"
-                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                 )}
               >
                 Mute
@@ -140,7 +140,7 @@ export function SoundVolumeControl({
                   "px-2 py-1 text-[10px] font-mono rounded-md transition-colors cursor-pointer",
                   percent === 30
                     ? "bg-[#ede9fe] text-[#4f46e5] font-bold dark:bg-neutral-700 dark:text-white"
-                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                 )}
               >
                 30%
@@ -152,7 +152,7 @@ export function SoundVolumeControl({
                   "px-2 py-1 text-[10px] font-mono rounded-md transition-colors cursor-pointer",
                   percent === 70
                     ? "bg-[#ede9fe] text-[#4f46e5] font-bold dark:bg-neutral-700 dark:text-white"
-                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                 )}
               >
                 70%
@@ -164,7 +164,7 @@ export function SoundVolumeControl({
                   "px-2 py-1 text-[10px] font-mono rounded-md transition-colors cursor-pointer",
                   percent === 100
                     ? "bg-[#ede9fe] text-[#4f46e5] font-bold dark:bg-neutral-700 dark:text-white"
-                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    : "text-[#64748b] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                 )}
               >
                 100%

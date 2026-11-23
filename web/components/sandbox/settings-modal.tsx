@@ -342,7 +342,7 @@ function RainbowTab({ settings }: { settings: EditorSettings }) {
                   "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] cursor-pointer transition-colors",
                   activePreset === p.id
                     ? "border-[#5b45ff] text-[#4f46e5] bg-[#ede9fe] dark:border-sky-500/60 dark:text-sky-300 dark:bg-sky-500/10"
-                    : "border-[#e2e2dc] text-[#475569] hover:bg-[#f1f1ee] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    : "border-[#e2e2dc] text-[#475569] hover:bg-[#f1f1ee] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white"
                 )}
               >
                 <span className="flex">
@@ -494,7 +494,7 @@ export function SettingsModal({
               type="button"
               onClick={onClose}
               title="Tutup (Esc)"
-              className="sm:hidden p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 cursor-pointer"
+              className="sm:hidden p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -513,7 +513,7 @@ export function SettingsModal({
                   "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap text-left transition-colors cursor-pointer",
                   tab === id
                     ? "bg-[#ede9fe] text-[#4f46e5] dark:bg-neutral-800 dark:text-white"
-                    : "text-[#475569] hover:bg-[#f1f1ee] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-200"
+                    : "text-[#475569] hover:bg-[#f1f1ee] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                 )}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -539,7 +539,7 @@ export function SettingsModal({
               type="button"
               onClick={onClose}
               title="Tutup (Esc)"
-              className="hidden sm:inline-flex p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 cursor-pointer"
+              className="hidden sm:inline-flex p-1 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#edeef0] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -555,7 +555,7 @@ export function SettingsModal({
             <button
               type="button"
               onClick={resetTab}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f1ee] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               Kembalikan default
