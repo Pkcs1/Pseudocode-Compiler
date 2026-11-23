@@ -101,7 +101,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={copy}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono text-[#475569] hover:bg-[#edeef0] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono text-[#475569] hover:bg-[#edeef0] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
     >
       {copied ? (
         <>
@@ -392,7 +392,7 @@ export function DocsView() {
                     "block px-2 py-1 rounded-md text-[13px] transition-colors",
                     activeId === s.id
                       ? "bg-[#ede9fe] text-[#4f46e5] font-medium dark:bg-sky-500/10 dark:text-sky-300"
-                      : "text-[#475569] hover:bg-[#f1f1ee] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-100"
+                      : "text-[#475569] hover:bg-[#f1f1ee] hover:text-[#0f172a] dark:text-neutral-400 dark:hover:bg-emerald-600 dark:hover:text-white"
                   )}
                 >
                   {s.title}
@@ -415,7 +415,7 @@ export function DocsView() {
         <div className="flex items-center gap-3 px-4 lg:px-6 py-2.5">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-[#475569] hover:bg-[#edeef0] hover:text-[#0f172a] dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-[#475569] hover:bg-[#edeef0] hover:text-[#0f172a] dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Editor</span>

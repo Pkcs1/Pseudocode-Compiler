@@ -756,7 +756,7 @@ export function TraceView({
                         "px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer",
                         isCurrentIter
                           ? "bg-[#5b45ff] text-white dark:bg-purple-500"
-                          : "bg-[#f1f1ee] text-[#475569] hover:bg-[#e2e2dc] dark:bg-neutral-800 dark:text-neutral-300"
+                          : "bg-[#f1f1ee] text-[#475569] hover:bg-[#e2e2dc] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:text-white"
                       )}
                     >
                       #{f.iteration}
@@ -1119,7 +1119,7 @@ export function TraceView({
                               <td className="py-2 px-3 text-right font-sans">
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[#4f46e5] hover:bg-[#ede9fe] dark:text-purple-300 dark:hover:bg-purple-500/20 cursor-pointer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[#4f46e5] hover:bg-[#ede9fe] dark:text-purple-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
                                 >
                                   <span>{isExpanded ? "Tutup" : "Rincian"}</span>
                                   {isExpanded ? (
@@ -1355,7 +1355,7 @@ function IconBtn({
       type="button"
       title={title}
       onClick={onClick}
-      className="p-1 rounded-md text-[#475569] hover:bg-[#edeef0] dark:text-neutral-300 dark:hover:bg-neutral-800 cursor-pointer"
+      className="p-1 rounded-md text-[#475569] hover:bg-[#edeef0] dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors cursor-pointer"
     >
       {children}
     </button>

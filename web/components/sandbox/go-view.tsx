@@ -94,7 +94,7 @@ export function GoView({ code }: { code: string }) {
   };
 
   const btn =
-    "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#e2e2dc] bg-[#f8f8f6] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white transition-colors cursor-pointer text-[11px]";
+    "group inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#e2e2dc] bg-[#f8f8f6] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white transition-colors cursor-pointer text-[11px]";
 
   return (
     <div className="h-full min-h-0 flex flex-col">
@@ -106,7 +106,7 @@ export function GoView({ code }: { code: string }) {
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
           <button type="button" onClick={copy} className={btn} title="Salin kode Go">
-            {copied ? <Check className="w-3 h-3 text-[#16a34a]" /> : <Copy className="w-3 h-3" />}
+            {copied ? <Check className="w-3 h-3 text-[#16a34a] dark:text-emerald-400 dark:group-hover:text-white" /> : <Copy className="w-3 h-3" />}
             <span>{copied ? "Disalin" : "Salin"}</span>
           </button>
           <button type="button" onClick={download} className={btn} title="Unduh sebagai main.go">

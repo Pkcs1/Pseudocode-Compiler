@@ -131,11 +131,12 @@ export function Workspace() {
   const [testResults, setTestResults] = useState<Record<string, TestResult | undefined>>({});
   const [runningTests, setRunningTests] = useState<Set<string>>(() => new Set());
 
-  // LeetCode-style split sizes (percent)
+  // LeetCode-style split sizes (percent) & macOS window mode
   const DEFAULT_LEFT = 52;
   const DEFAULT_TOP = 55;
   const [leftPct, setLeftPct] = useState(DEFAULT_LEFT);
   const [topPct, setTopPct] = useState(DEFAULT_TOP);
+  const [editorMode, setEditorMode] = useState<"normal" | "minimized" | "maximized">("normal");
   const mainRef = useRef<HTMLDivElement | null>(null);
   const rightRef = useRef<HTMLDivElement | null>(null);
   const soundVolume = useSoundVolume();
@@ -186,7 +187,18 @@ export function Workspace() {
   const handleJumpToDiagnostic = useCallback((line: number, col: number) => {
     setJumpTo({ line, col, nonce: Date.now() });
     setMobilePane("code");
+    setEditorMode((m) => (m === "minimized" ? "normal" : m));
   }, []);
+
+  const toggleEditorMinimize = useCallback(() => {
+    soundDown("Enter");
+    setEditorMode((m) => (m === "minimized" ? "normal" : "minimized"));
+  }, [soundDown]);
+
+  const toggleEditorMaximize = useCallback(() => {
+    soundDown("Enter");
+    setEditorMode((m) => (m === "maximized" ? "normal" : "maximized"));
+  }, [soundDown]);
 
   const runTests = async (ids: string[]) => {
     if (runningTests.size > 0 || ids.length === 0) return;
@@ -429,9 +441,9 @@ export function Workspace() {
           <Link
             href="/docs"
             title="Buka dokumentasi bahasa pseudocode"
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:text-white text-xs font-mono font-medium transition-all"
+            className="group inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] dark:border-neutral-700/80 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white text-xs font-mono font-medium transition-all"
           >
-            <FileText className="w-3.5 h-3.5 text-[#5b45ff] dark:text-sky-400" />
+            <FileText className="w-3.5 h-3.5 text-[#5b45ff] dark:text-sky-400 dark:group-hover:text-white transition-colors" />
             <span className="hidden sm:inline">Dokumentasi</span>
           </Link>
 
@@ -451,7 +463,7 @@ export function Workspace() {
             }}
             title="Pengaturan (Ctrl + ,)"
             aria-label="Pengaturan"
-            className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] transition-all cursor-pointer dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-[#e2e2dc] bg-[#fbfbfa] hover:bg-[#edeef0] text-[#475569] hover:text-[#0f172a] transition-all cursor-pointer dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-emerald-600 dark:hover:border-emerald-500 dark:hover:text-white"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -501,14 +513,24 @@ export function Workspace() {
       {/* MAIN: LeetCode-style split — editor | (test cases / results) */}
       <div
         ref={mainRef}
-        className="flex flex-col flex-1 min-h-0 lg:flex-row"
+        className={cn(
+          "flex flex-col flex-1 min-h-0",
+          editorMode === "minimized" ? "gap-2" : "lg:flex-row"
+        )}
         style={{ "--left": `${leftPct}%`, "--top": `${topPct}%` } as React.CSSProperties}
       >
         {/* Left: Code Editor */}
         <section
           className={cn(
-            "relative z-10 flex-1 min-h-0 lg:flex-none lg:block lg:min-w-0 lg:w-[var(--left)]",
-            mobilePane === "code" ? "block" : "hidden"
+            "relative z-10 min-h-0 lg:min-w-0",
+            editorMode === "minimized"
+              ? "shrink-0 block"
+              : editorMode === "maximized"
+                ? "flex-1 block"
+                : cn(
+                    "flex-1 lg:flex-none lg:block lg:w-[var(--left)]",
+                    mobilePane === "code" ? "block" : "hidden"
+                  )
           )}
         >
           <PseudocodeEditor
@@ -523,23 +545,32 @@ export function Workspace() {
             onKeyDownSound={soundDown}
             onKeyUpSound={soundUp}
             lastExecutionMs={lastExecutionMs}
+            windowMode={editorMode}
+            onToggleMinimize={toggleEditorMinimize}
+            onToggleMaximize={toggleEditorMaximize}
           />
         </section>
 
-        <ResizeHandle
-          axis="x"
-          containerRef={mainRef}
-          onResize={setLeftPct}
-          onReset={() => setLeftPct(DEFAULT_LEFT)}
-          className="hidden lg:flex"
-        />
+        {editorMode === "normal" && (
+          <ResizeHandle
+            axis="x"
+            containerRef={mainRef}
+            onResize={setLeftPct}
+            onReset={() => setLeftPct(DEFAULT_LEFT)}
+            className="hidden lg:flex"
+          />
+        )}
 
         {/* Right: Problems / Terminal / Kamus (top) + Test cases (bottom) */}
         <div
           ref={rightRef}
           className={cn(
-            "flex-col flex-1 min-h-0 lg:flex lg:min-w-0",
-            mobilePane === "code" ? "hidden" : "flex"
+            "flex-col flex-1 min-h-0 lg:min-w-0",
+            editorMode === "maximized"
+              ? "hidden"
+              : editorMode === "minimized"
+                ? "flex"
+                : cn("lg:flex", mobilePane === "code" ? "hidden" : "flex")
           )}
         >
           <section
